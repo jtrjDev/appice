@@ -16,7 +16,20 @@
         })();
     </script>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+@php
+    $manifestPath = public_path('build/manifest.json');
+    if (file_exists($manifestPath)) {
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        $cssFile = $manifest['resources/css/app.css']['file'] ?? 'app-B3ehL459.css';
+        $jsFile = $manifest['resources/js/app.js']['file'] ?? 'app-BjoUdjsi.js';
+    } else {
+        $cssFile = 'app-B3ehL459.css';
+        $jsFile = 'app-BjoUdjsi.js';
+    }
+@endphp
+
+<link rel="stylesheet" href="{{ url('/build/' . $cssFile) }}">
+<script src="{{ url('/build/' . $jsFile) }}" defer></script>
     @livewireStyles
 </head>
 <body class="font-sans antialiased min-h-screen bg-white dark:bg-ink-950">
@@ -64,10 +77,28 @@
                         {{ $dash['label'] }}
                     </a>
 
+                    @php $produtos = $navLink('tenant.produtos.*', 'Produtos', 'package'); @endphp
+                    <a href="{{ route('tenant.produtos.index') }}" wire:navigate class="{{ $produtos['class'] }}">
+                        <x-ui.icon :name="$produtos['icon']" class="size-4" />
+                        {{ $produtos['label'] }}
+                    </a>
+                   
+                    @php $caixa = $navLink('tenant.caixa', 'CAIXA', 'table'); @endphp
+                    <a href="{{ route('tenant.caixa') }}" wire:navigate class="{{ $caixa['class'] }}">
+                        <x-ui.icon :name="$caixa['icon']" class="size-4" />
+                        {{ $caixa['label'] }}
+                    </a>
+                    
                     @php $pdv = $navLink('tenant.pdv', 'PDV', 'shopping-cart'); @endphp
                     <a href="{{ route('tenant.pdv') }}" wire:navigate class="{{ $pdv['class'] }}">
                         <x-ui.icon :name="$pdv['icon']" class="size-4" />
                         {{ $pdv['label'] }}
+                    </a>
+                    
+                    @php $mesa = $navLink('tenant.mesas', 'MESA', 'table'); @endphp
+                    <a href="{{ route('tenant.mesas') }}" wire:navigate class="{{ $mesa['class'] }}">
+                        <x-ui.icon :name="$mesa['icon']" class="size-4" />
+                        {{ $mesa['label'] }}
                     </a>
 
                     @php $clientes = $navLink('tenant.clientes.*', 'Clientes', 'users'); @endphp
@@ -76,7 +107,12 @@
                         {{ $clientes['label'] }}
                     </a>
 
-                  
+                    {{-- CONFIGURAÇÕES --}}
+                    @php $config = $navLink('tenant.configuracoes.*', 'Configurações', 'settings'); @endphp
+                    <a href="{{ route('tenant.configuracoes.index') }}" wire:navigate class="{{ $config['class'] }}">
+                        <x-ui.icon :name="$config['icon']" class="size-4" />
+                        {{ $config['label'] }}
+                    </a>
                 </nav>
 
                 {{-- Espaço flexível --}}
@@ -122,9 +158,9 @@
                                     <x-ui.icon name="user" class="size-4" />
                                     Perfil
                                 </a>
-                                <a href="#" class="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800">
+                                <a href="{{ route('tenant.configuracoes.index') }}" wire:navigate class="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800">
                                     <x-ui.icon name="settings" class="size-4" />
-                                    Configurações
+                                    Configurações da Empresa
                                 </a>
                             </div>
                             <div class="py-1 border-t border-ink-100 dark:border-ink-800">
@@ -145,17 +181,17 @@
 
     {{-- MAIN CONTENT --}}
     <main class="max-w-[1400px] mx-auto px-6 py-8">
-       @if (session('success'))
-    <div class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-        {{ session('success') }}
-    </div>
-@endif
+        @if (session('success'))
+            <div class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                {{ session('success') }}
+            </div>
+        @endif
 
-@if (session('error'))
-    <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-        {{ session('error') }}
-    </div>
-@endif
+        @if (session('error'))
+            <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {{ session('error') }}
+            </div>
+        @endif
 
         @yield('content')
         {{ $slot ?? '' }}

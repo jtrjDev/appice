@@ -10,6 +10,13 @@ use App\Livewire\Tenant\PDV\Index as PDVIndex;
 use App\Livewire\Tenant\PDV\Caixa as PDVCaixa;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Tenant\PDV\Mesas as PDVMesas;
+use App\Livewire\Tenant\Configuracoes\Index as ConfiguracoesIndex;
+use App\Livewire\Tenant\Configuracoes\Create as ConfiguracoesCreate;
+use App\Livewire\Tenant\Configuracoes\Edit as ConfiguracoesEdit;
+use App\Livewire\Tenant\Produtos\Index as ProdutosIndex;
+use App\Livewire\Tenant\Produtos\Create as ProdutosCreate;
+use App\Livewire\Tenant\Produtos\Edit as ProdutosEdit;
+
 
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +31,16 @@ Route::get('/caixa', PDVCaixa::class)->name('caixa');
 Route::get('/clientes', ClientesIndex::class)->name('clientes.index');
 Route::get('/clientes/create', ClientesCreate::class)->name('clientes.create');
 Route::get('/clientes/{cliente}/edit', ClientesEdit::class)->name('clientes.edit');
+
+// Adicione no grupo de rotas:
+Route::get('/configuracoes', ConfiguracoesIndex::class)->name('configuracoes.index');
+Route::get('/configuracoes/create', ConfiguracoesCreate::class)->name('configuracoes.create');
+Route::get('/configuracoes/{configuracao}/edit', ConfiguracoesEdit::class)->name('configuracoes.edit');
+
+// Adicione dentro do grupo de rotas:
+Route::get('/produtos', ProdutosIndex::class)->name('produtos.index');
+Route::get('/produtos/create', ProdutosCreate::class)->name('produtos.create');
+Route::get('/produtos/{produto}/edit', ProdutosEdit::class)->name('produtos.edit');
 
 // dentro do grupo:
 Route::get('/mesas', PDVMesas::class)->name('mesas');

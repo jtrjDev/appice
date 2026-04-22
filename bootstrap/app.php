@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->web(append: [
         \App\Http\Middleware\InitializeTenancyByAuthUser::class,
     ]); 
+    $middleware->prepend(\App\Http\Middleware\TrustProxies::class);
     $middleware->alias([
             'tenant.auth' => \App\Http\Middleware\InitializeTenancyByAuthUser::class,
             'superadmin'  => \App\Http\Middleware\EnsureUserIsSuperAdmin::class,

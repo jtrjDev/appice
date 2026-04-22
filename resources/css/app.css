@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+/* ===== Dark mode via classe ===== */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ===== Design tokens ===== */
+@theme {
+    /* Fontes */
+    --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+
+    /* Paleta de cinzas customizada (inspirada no Linear/Notion) */
+    --color-ink-50: #fafafa;
+    --color-ink-100: #f4f4f5;
+    --color-ink-200: #e4e4e7;
+    --color-ink-300: #d4d4d8;
+    --color-ink-400: #a1a1aa;
+    --color-ink-500: #71717a;
+    --color-ink-600: #52525b;
+    --color-ink-700: #3f3f46;
+    --color-ink-800: #27272a;
+    --color-ink-900: #18181b;
+    --color-ink-950: #09090b;
+
+    /* Cores de status (sutis, não saturadas — estilo Linear) */
+    --color-success-50: #f0fdf4;
+    --color-success-500: #22c55e;
+    --color-success-600: #16a34a;
+
+    --color-warning-50: #fffbeb;
+    --color-warning-500: #f59e0b;
+    --color-warning-600: #d97706;
+
+    --color-danger-50: #fef2f2;
+    --color-danger-500: #ef4444;
+    --color-danger-600: #dc2626;
+
+    --color-info-50: #eff6ff;
+    --color-info-500: #3b82f6;
+    --color-info-600: #2563eb;
+}
+
+/* ===== Base styles ===== */
+@layer base {
+    html {
+        font-feature-settings: 'cv11', 'ss01', 'ss03';
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        @apply bg-white text-ink-900 transition-colors duration-150;
+    }
+
+    .dark body {
+        @apply bg-ink-950 text-ink-100;
+    }
+
+    /* Scrollbar estilizada */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        @apply bg-ink-200 rounded-full;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-ink-300;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+        @apply bg-ink-800;
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+        @apply bg-ink-700;
+    }
+
+    /* Focus visível premium */
+    *:focus-visible {
+        @apply outline-none ring-2 ring-ink-900 ring-offset-2 ring-offset-white;
+    }
+    .dark *:focus-visible {
+        @apply ring-ink-100 ring-offset-ink-950;
+    }
+
+    /* Remove ring feio dos inputs */
+    input, textarea, select, button {
+        @apply focus:outline-none;
+    }
+}
+
+/* ===== Utilities customizadas ===== */
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+
+    /* Sombra sutil estilo Notion */
+    .shadow-soft {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    .shadow-soft-md {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 6px rgba(0, 0, 0, 0.04);
+    }
+}

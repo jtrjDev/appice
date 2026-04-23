@@ -21,7 +21,6 @@ class Index extends Component
     public ?int $categoriaSelecionada = null;
     public string $busca = '';
     public string $codigoProduto = '';
-    // Adiciona a propriedade
     public float $quantidadeInput = 1;
 
     // Carrinho
@@ -45,26 +44,42 @@ class Index extends Component
     public string $formaPagamento = 'dinheiro';
     public ?int $tenantUserId = null;
 
-    // ─────────────────────────────────────────
-    // Boot / Mount
-    // ─────────────────────────────────────────
-
-    // No mount() adiciona:
     public function mount(?string $mesa = null): void
     {
         $this->tenantUserId = \App\Models\Tenant\User::where('email', auth()->user()->email)->value('id');
-        $this->carrinho     = session('pdv_carrinho', []);
-        $this->pagamentos   = session('pdv_pagamentos', []);
+        $this->carrinho = session('pdv_carrinho', []);
+        $this->pagamentos = [];
+        $this->valorPendente = 0;
+        $this->valorPagamento = 0;
+        $this->formaPagamento = 'dinheiro';
 
         if ($mesa) {
             $this->mesa = $mesa;
             $this->updatedMesa();
         }
+
+        $this->recalcularPendente();
     }
 
-    // ─────────────────────────────────────────
-    // Computed properties  (Livewire v3)
-    // ─────────────────────────────────────────
+    private function recalcularPendente(bool $ajustarValorPagamento = true): void
+    {
+        $totalPagoLocal = round((float) collect($this->pagamentos)->sum('valor'), 2);
+        $totalPagoComanda = 0;
+
+        if ($this->modoComanda && $this->comandaId) {
+            $comanda = Comanda::find($this->comandaId);
+            $totalPagoComanda = (float) ($comanda?->total_pago ?? 0);
+        }
+
+        $this->valorPendente = max(
+            0,
+            round($this->totalCarrinho - $totalPagoComanda - $totalPagoLocal, 2)
+        );
+
+        if ($ajustarValorPagamento) {
+            $this->valorPagamento = $this->valorPendente > 0 ? $this->valorPendente : 0;
+        }
+    }
 
     #[Computed]
     public function totalCarrinho(): float
@@ -84,40 +99,10 @@ class Index extends Component
         return (float) array_sum(array_column($this->carrinho, 'quantidade'));
     }
 
-    // ─────────────────────────────────────────
-    // Código de barras / ID
-    // ─────────────────────────────────────────
-
-    public function updatedCodigoProduto(): void
-    {
-        $codigo = trim($this->codigoProduto);
-
-        if (strlen($codigo) < 1) return;
-
-        $produto = Produto::where('codigo', $codigo)
-            ->orWhere('id', $codigo)
-            ->first();
-
-        if ($produto) {
-            $this->adicionarProduto($produto->id);
-            $this->codigoProduto = '';
-        } else {
-            $this->dispatch('pdv-aviso', mensagem: 'Produto não encontrado: ' . $codigo);
-        }
-    }
-
-    // ─────────────────────────────────────────
-    // Categorias
-    // ─────────────────────────────────────────
-
     public function selecionarCategoria(?int $categoriaId): void
     {
         $this->categoriaSelecionada = $categoriaId;
     }
-
-    // ─────────────────────────────────────────
-    // Carrinho
-    // ─────────────────────────────────────────
 
     public function adicionarProduto(int $produtoId, ?float $quantidade = null): void
     {
@@ -129,14 +114,13 @@ class Index extends Component
             return;
         }
 
-        $preco    = (float) $produto->preco_atual;
-        $quantidade = max(0.01, $quantidade);
-
+        $preco = (float) $produto->preco_atual;
+        $quantidade = max(0.01, (float) $quantidade);
         $chave = (string) $produtoId;
 
         if (isset($this->carrinho[$chave])) {
             $this->carrinho[$chave]['quantidade'] += $quantidade;
-            $this->carrinho[$chave]['subtotal']    = round(
+            $this->carrinho[$chave]['subtotal'] = round(
                 $this->carrinho[$chave]['preco'] * $this->carrinho[$chave]['quantidade'],
                 2
             );
@@ -152,23 +136,27 @@ class Index extends Component
         }
 
         $this->salvarCarrinho();
-        // Reseta quantidade para 1 após adicionar
         $this->quantidadeInput = 1;
+        $this->recalcularPendente();
     }
 
     public function removerProduto(int $produtoId): void
     {
         $chave = (string) $produtoId;
         unset($this->carrinho[$chave]);
+
         $this->salvarCarrinho();
+        $this->recalcularPendente();
     }
 
     public function atualizarQuantidade(int $produtoId, mixed $quantidade): void
     {
-        $chave      = (string) $produtoId;
+        $chave = (string) $produtoId;
         $quantidade = (float) $quantidade;
 
-        if (! isset($this->carrinho[$chave])) return;
+        if (! isset($this->carrinho[$chave])) {
+            return;
+        }
 
         if ($quantidade <= 0) {
             $this->removerProduto($produtoId);
@@ -176,17 +164,22 @@ class Index extends Component
         }
 
         $this->carrinho[$chave]['quantidade'] = $quantidade;
-        $this->carrinho[$chave]['subtotal']   = round(
+        $this->carrinho[$chave]['subtotal'] = round(
             $this->carrinho[$chave]['preco'] * $quantidade,
             2
         );
 
         $this->salvarCarrinho();
+        $this->recalcularPendente();
     }
 
     public function limparCarrinho(): void
     {
         $this->carrinho = [];
+        $this->pagamentos = [];
+        $this->valorPendente = 0;
+        $this->valorPagamento = 0;
+
         session()->forget('pdv_carrinho');
     }
 
@@ -195,38 +188,33 @@ class Index extends Component
         session()->put('pdv_carrinho', $this->carrinho);
     }
 
-    // ─────────────────────────────────────────
-    // Pagamento
-    // ─────────────────────────────────────────
-
     public function abrirPagamento(): void
-{
-    if (empty($this->carrinho)) {
-        $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
-        return;
+    {
+        if (empty($this->carrinho)) {
+            $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
+            return;
+        }
+
+        if ($this->modoComanda) {
+            $this->salvarComanda(false);
+
+            $comanda = Comanda::find($this->comandaId);
+            $this->valorPendente = $comanda ? (float) $comanda->total_restante : $this->totalCarrinho;
+            $this->valorPagamento = $this->valorPendente;
+        } else {
+            $this->recalcularPendente();
+        }
+
+        $this->mostrarPagamento = true;
     }
-
-    if ($this->modoComanda) {
-        // Salva sem limpar para manter o estado
-        $this->salvarComanda(false);
-
-        $comanda = Comanda::find($this->comandaId);
-        $this->valorPendente = $comanda ? $comanda->total_restante : $this->totalCarrinho;
-    } else {
-        $this->valorPendente = $this->totalCarrinho;
-    }
-
-    $this->pagamentos     = [];
-    $this->valorPagamento = round($this->valorPendente, 2);
-    $this->formaPagamento = 'dinheiro';
-    $this->mostrarPagamento = true;
-}
 
     public function buscarPorCodigo(): void
     {
         $codigo = trim($this->codigoProduto);
 
-        if (strlen($codigo) < 1) return;
+        if (strlen($codigo) < 1) {
+            return;
+        }
 
         $produto = Produto::where('codigo', $codigo)
             ->orWhere('id', $codigo)
@@ -236,7 +224,6 @@ class Index extends Component
             $this->adicionarProduto($produto->id, $this->quantidadeInput);
             $this->codigoProduto = '';
             $this->quantidadeInput = 1;
-            // Foca de volta no código
             $this->dispatch('focar-codigo');
         } else {
             $this->dispatch('pdv-aviso', mensagem: 'Produto não encontrado: ' . $codigo);
@@ -248,79 +235,117 @@ class Index extends Component
         $this->mostrarPagamento = false;
     }
 
-    public function adicionarPagamento(): void
-{
-    \Illuminate\Support\Facades\Log::info('adicionarPagamento', [
-        'modoComanda' => $this->modoComanda,
-        'comandaId'   => $this->comandaId,
-        'mesa'        => $this->mesa,
-        'valor'       => $this->valorPagamento,
-    ]);
+    public function acaoF5(): void
+    {
+        if ($this->modoComanda) {
+            $this->adicionarPagamento();
+            return;
+        }
 
-    $valor = (float) $this->valorPagamento;
+        $this->recalcularPendente(false);
 
-    if ($valor <= 0) {
-        $this->dispatch('pdv-aviso', mensagem: 'Informe um valor válido.');
-        return;
-    }
-
-    // Tenta recuperar comanda pela mesa se perdeu o estado
-    if (!$this->comandaId && $this->mesa) {
-        $comanda = Comanda::buscarMesa($this->mesa);
-        if ($comanda) {
-            $this->comandaId   = $comanda->id;
-            $this->modoComanda = true;
+        if ($this->valorPendente > 0) {
+            $this->adicionarPagamento();
+        } else {
+            $this->finalizarVenda();
         }
     }
 
-    // Modo comanda — pagamento parcial
-    if ($this->modoComanda && $this->comandaId) {
-        $this->pagarParcialComanda();
-        return;
+    public function adicionarPagamento(): void
+    {
+        if (empty($this->carrinho)) {
+            $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
+            return;
+        }
+
+        if (!$this->comandaId && $this->mesa) {
+            $comanda = Comanda::buscarMesa($this->mesa);
+            if ($comanda) {
+                $this->comandaId = $comanda->id;
+                $this->modoComanda = true;
+            }
+        }
+
+        $this->recalcularPendente(false);
+
+        $valor = round((float) $this->valorPagamento, 2);
+
+        if ($valor <= 0) {
+            $this->dispatch('pdv-aviso', mensagem: 'Informe um valor para pagamento.');
+            return;
+        }
+
+        if ($this->modoComanda && $this->comandaId) {
+            $this->pagarParcialComanda();
+            $this->recalcularPendente();
+            return;
+        }
+
+        if ($this->valorPendente <= 0) {
+            $this->dispatch('pdv-aviso', mensagem: 'A venda já está totalmente paga. Clique em Finalizar Venda.');
+            return;
+        }
+
+        $troco = 0;
+
+        if ($this->formaPagamento === 'dinheiro' && $valor > $this->valorPendente) {
+            $troco = round($valor - $this->valorPendente, 2);
+            $valorEfetivo = $this->valorPendente;
+        } else {
+            $valorEfetivo = min($valor, $this->valorPendente);
+        }
+
+        $this->pagamentos[] = [
+            'forma' => $this->formaPagamento,
+            'valor' => round($valorEfetivo, 2),
+            'troco' => $troco,
+        ];
+
+        $this->recalcularPendente();
+
+        if ($this->valorPendente > 0) {
+            $this->dispatch(
+                'pdv-sucesso',
+                mensagem: 'Pagamento adicionado! Restante: R$ ' . number_format($this->valorPendente, 2, ',', '.')
+            );
+        } else {
+            $this->dispatch(
+                'pdv-sucesso',
+                mensagem: 'Pagamento completo! Agora clique em Finalizar Venda.'
+            );
+        }
     }
-
-    // Modo balcão — comportamento original
-    $troco = 0;
-
-    if ($this->formaPagamento === 'dinheiro' && $valor > $this->valorPendente) {
-        $troco        = round($valor - $this->valorPendente, 2);
-        $valorEfetivo = $this->valorPendente;
-    } else {
-        $valorEfetivo = min($valor, $this->valorPendente);
-    }
-
-    $this->pagamentos[] = [
-        'forma' => $this->formaPagamento,
-        'valor' => round($valorEfetivo, 2),
-        'troco' => $troco,
-    ];
-
-    $this->valorPendente = round($this->valorPendente - $valorEfetivo, 2);
-
-    if ($this->valorPendente <= 0) {
-        $this->finalizarVenda();
-        return;
-    }
-
-    $this->valorPagamento = $this->valorPendente;
-}
 
     public function removerPagamento(int $index): void
     {
-        if (! isset($this->pagamentos[$index])) return;
-
-        $this->valorPendente += $this->pagamentos[$index]['valor'];
-        $this->valorPendente  = round($this->valorPendente, 2);
+        if (! isset($this->pagamentos[$index])) {
+            return;
+        }
 
         array_splice($this->pagamentos, $index, 1);
+        $this->recalcularPendente();
     }
 
     public function finalizarVenda(): void
     {
-        // Verifica se tem caixa aberto
+        if (empty($this->carrinho)) {
+            $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
+            return;
+        }
+
+        $this->recalcularPendente(false);
+
+        if (!$this->modoComanda && $this->valorPendente > 0) {
+            $this->dispatch(
+                'pdv-aviso',
+                mensagem: 'Ainda falta R$ ' . number_format($this->valorPendente, 2, ',', '.') . ' para concluir a venda.'
+            );
+            return;
+        }
+
         $caixa = Caixa::caixaAberto();
 
-        if (!$caixa) {
+        if (! $caixa) {
             $this->dispatch('pdv-aviso', mensagem: 'Nenhum caixa aberto! Abra o caixa antes de vender.');
             $this->mostrarPagamento = false;
             return;
@@ -331,7 +356,6 @@ class Index extends Component
         try {
             $subtotal = $this->totalCarrinho;
 
-            // Cria o pedido
             $pedido = Pedido::create([
                 'caixa_id'      => $caixa->id,
                 'numero_pedido' => Pedido::gerarNumero(),
@@ -344,11 +368,9 @@ class Index extends Component
                 'total'         => $subtotal,
                 'status'        => 'entregue',
                 'pagamentos'    => $this->pagamentos,
-                // No finalizarVenda() troca para:
-                'atendente_id' => $this->tenantUserId ?? 1,
+                'atendente_id'  => $this->tenantUserId ?? 1,
             ]);
 
-            // Cria os itens
             foreach ($this->carrinho as $item) {
                 PedidoItem::create([
                     'pedido_id'      => $pedido->id,
@@ -360,21 +382,28 @@ class Index extends Component
                 ]);
             }
 
-            // Atualiza totais do caixa
-            $totaisPagamentos = collect($this->pagamentos)->groupBy('forma')->map(fn($g) => $g->sum('valor'));
+            $totaisPagamentos = collect($this->pagamentos)
+                ->groupBy('forma')
+                ->map(fn($grupo) => $grupo->sum('valor'));
 
             $caixa->increment('total_vendas', $subtotal);
             $caixa->increment('quantidade_vendas');
             $caixa->increment('total_dinheiro', $totaisPagamentos->get('dinheiro', 0));
-            $caixa->increment('total_credito',  $totaisPagamentos->get('cartao_credito', 0));
-            $caixa->increment('total_debito',   $totaisPagamentos->get('cartao_debito', 0));
-            $caixa->increment('total_pix',      $totaisPagamentos->get('pix', 0));
+            $caixa->increment('total_credito', $totaisPagamentos->get('cartao_credito', 0));
+            $caixa->increment('total_debito', $totaisPagamentos->get('cartao_debito', 0));
+            $caixa->increment('total_pix', $totaisPagamentos->get('pix', 0));
 
             DB::commit();
 
             $this->mostrarPagamento = false;
             $this->limparCarrinho();
-            $this->reset(['mesa', 'comanda', 'clienteId', 'observacao', 'pagamentos', 'valorPendente']);
+            $this->mesa = '';
+            $this->comanda = '';
+            $this->clienteId = null;
+            $this->observacao = '';
+            $this->modoComanda = false;
+            $this->comandaId = null;
+            $this->formaPagamento = 'dinheiro';
 
             $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado!");
         } catch (\Exception $e) {
@@ -383,32 +412,31 @@ class Index extends Component
         }
     }
 
-
-    // ─────────────────────────────────────────
-    // Comanda / Mesa
-    // ─────────────────────────────────────────
-
     public function updatedMesa(): void
     {
         $mesa = trim($this->mesa);
 
         if (strlen($mesa) < 1) {
             $this->modoComanda = false;
-            $this->comandaId   = null;
-            $this->carrinho    = [];
+            $this->comandaId = null;
+            $this->carrinho = [];
+            $this->pagamentos = [];
             $this->salvarCarrinho();
+            $this->recalcularPendente();
             return;
         }
 
         $comanda = Comanda::buscarMesa($mesa);
 
         if ($comanda) {
-            $this->comandaId   = $comanda->id;
+            $this->comandaId = $comanda->id;
             $this->modoComanda = true;
-            $this->carrinho    = [];
+            $this->carrinho = [];
+            $this->pagamentos = [];
 
             foreach ($comanda->itens as $item) {
                 $chave = (string) $item->produto_id;
+
                 $this->carrinho[$chave] = [
                     'id'              => $item->produto_id,
                     'nome'            => $item->produto_nome,
@@ -420,171 +448,211 @@ class Index extends Component
             }
 
             $this->salvarCarrinho();
+            $this->recalcularPendente();
             $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $mesa . ' carregada!');
         } else {
             $this->modoComanda = true;
-            $this->comandaId   = null;
-            $this->carrinho    = [];
+            $this->comandaId = null;
+            $this->carrinho = [];
+            $this->pagamentos = [];
             $this->salvarCarrinho();
+            $this->recalcularPendente();
         }
     }
 
     public function salvarComanda(bool $limparAposalvar = true): void
-{
-    if (empty($this->carrinho)) return;
-
-    $caixa = Caixa::caixaAberto();
-    $total = $this->totalCarrinho;
-
-    if ($this->comandaId) {
-        $comanda = Comanda::find($this->comandaId);
-        $comanda->itens()->delete();
-    } else {
-        $comanda = Comanda::buscarMesa($this->mesa);
-
-        if (!$comanda) {
-            $comanda = Comanda::create([
-                'caixa_id'   => $caixa?->id,
-                'mesa'       => $this->mesa,
-                'status'     => 'aberta',
-                'total'      => $total,
-                'total_pago' => 0,
-            ]);
-        } else {
-            $comanda->itens()->delete();
+    {
+        if (empty($this->carrinho)) {
+            return;
         }
 
-        $this->comandaId = $comanda->id;
-    }
+        $caixa = Caixa::caixaAberto();
+        $total = $this->totalCarrinho;
 
-    foreach ($this->carrinho as $item) {
-        ComandaItem::create([
-            'comanda_id'     => $comanda->id,
-            'produto_id'     => $item['id'],
-            'produto_nome'   => $item['nome'],
-            'quantidade'     => $item['quantidade'],
-            'preco_unitario' => $item['preco'],
-            'subtotal'       => $item['subtotal'],
-        ]);
-    }
+        if ($this->comandaId) {
+            $comanda = Comanda::find($this->comandaId);
+            $comanda->itens()->delete();
+        } else {
+            $comanda = Comanda::buscarMesa($this->mesa);
 
-    $comanda->update(['total' => $total]);
+            if (! $comanda) {
+                $comanda = Comanda::create([
+                    'caixa_id'   => $caixa?->id,
+                    'mesa'       => $this->mesa,
+                    'status'     => 'aberta',
+                    'total'      => $total,
+                    'total_pago' => 0,
+                ]);
+            } else {
+                $comanda->itens()->delete();
+            }
 
-    if ($limparAposalvar) {
-        $this->limparCarrinho();
-        $this->mesa        = '';
-        $this->modoComanda = false;
-        $this->comandaId   = null;
-        $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $comanda->mesa . ' salva!');
+            $this->comandaId = $comanda->id;
+        }
+
+        foreach ($this->carrinho as $item) {
+            ComandaItem::create([
+                'comanda_id'     => $comanda->id,
+                'produto_id'     => $item['id'],
+                'produto_nome'   => $item['nome'],
+                'quantidade'     => $item['quantidade'],
+                'preco_unitario' => $item['preco'],
+                'subtotal'       => $item['subtotal'],
+            ]);
+        }
+
+        $comanda->update(['total' => $total]);
+
+        if ($limparAposalvar) {
+            $mesaSalva = $comanda->mesa;
+
+            $this->limparCarrinho();
+            $this->mesa = '';
+            $this->modoComanda = false;
+            $this->comandaId = null;
+            $this->formaPagamento = 'dinheiro';
+
+            $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $mesaSalva . ' salva!');
+        } else {
+            $this->recalcularPendente();
+        }
     }
-}
 
     public function pagarParcialComanda(): void
     {
-        if (!$this->comandaId) {
-            $this->salvarComanda();
+        if (! $this->comandaId) {
+            $this->salvarComanda(false);
         }
 
         $comanda = Comanda::find($this->comandaId);
 
-        if (!$comanda) return;
+        if (! $comanda) {
+            $this->dispatch('pdv-aviso', mensagem: 'Comanda não encontrada.');
+            return;
+        }
 
-        $valorPagamento = (float) $this->valorPagamento;
+        $valorInformado = round((float) $this->valorPagamento, 2);
 
-        if ($valorPagamento <= 0 || $valorPagamento > $comanda->total_restante) {
+        if ($valorInformado <= 0) {
+            $this->dispatch('pdv-aviso', mensagem: 'Informe um valor para pagamento.');
+            return;
+        }
+
+        $restante = (float) $comanda->total_restante;
+        $troco = 0;
+
+        if ($this->formaPagamento === 'dinheiro' && $valorInformado > $restante) {
+            $troco = round($valorInformado - $restante, 2);
+            $valorEfetivo = $restante;
+        } else {
+            $valorEfetivo = min($valorInformado, $restante);
+        }
+
+        if ($valorEfetivo <= 0) {
             $this->dispatch('pdv-aviso', mensagem: 'Valor inválido!');
             return;
         }
 
-        // Registra pagamento parcial
         ComandaPagamento::create([
             'comanda_id' => $comanda->id,
             'forma'      => $this->formaPagamento,
-            'valor'      => $valorPagamento,
+            'valor'      => $valorEfetivo,
         ]);
 
-        $comanda->increment('total_pago', $valorPagamento);
+        $comanda->increment('total_pago', $valorEfetivo);
         $comanda->refresh();
 
-        // Se quitou tudo fecha a comanda
         if ($comanda->total_restante <= 0) {
             $this->fecharComanda($comanda);
             return;
         }
 
-        $this->valorPendente  = $comanda->total_restante;
-        $this->valorPagamento = $comanda->total_restante;
-        $this->dispatch('pdv-sucesso', mensagem: 'Pagamento lançado! Restante: R$ ' . number_format($comanda->total_restante, 2, ',', '.'));
+        $this->valorPendente = (float) $comanda->total_restante;
+        $this->valorPagamento = (float) $comanda->total_restante;
+
+        $mensagem = 'Pagamento lançado! Restante: R$ ' . number_format($comanda->total_restante, 2, ',', '.');
+
+        if ($troco > 0) {
+            $mensagem .= ' | Troco: R$ ' . number_format($troco, 2, ',', '.');
+        }
+
+        $this->dispatch('pdv-sucesso', mensagem: $mensagem);
     }
 
     private function fecharComanda(Comanda $comanda): void
     {
-        $comanda->update([
-            'status'     => 'fechada',
-            'fechada_em' => now(),
-        ]);
+        DB::beginTransaction();
 
-        // Gera pedido no caixa
-        $caixa = Caixa::caixaAberto();
-
-        if ($caixa) {
-            $pagamentos = $comanda->pagamentos->map(fn($p) => [
-                'forma' => $p->forma,
-                'valor' => (float) $p->valor,
-                'troco' => 0,
-            ])->toArray();
-
-            $pedido = \App\Models\Tenant\Pedido::create([
-                'caixa_id'      => $caixa->id,
-                'numero_pedido' => \App\Models\Tenant\Pedido::gerarNumero(),
-                'tipo'          => 'mesa',
-                'mesa'          => $comanda->mesa,
-                'subtotal'      => $comanda->total,
-                'taxa_entrega'  => 0,
-                'desconto'      => 0,
-                'total'         => $comanda->total,
-                'status'        => 'entregue',
-                'pagamentos'    => $pagamentos,
-                'atendente_id'  => $this->tenantUserId ?? 1,
+        try {
+            $comanda->update([
+                'status'     => 'fechada',
+                'fechada_em' => now(),
             ]);
 
-            foreach ($comanda->itens as $item) {
-                \App\Models\Tenant\PedidoItem::create([
-                    'pedido_id'      => $pedido->id,
-                    'produto_id'     => $item->produto_id,
-                    'produto_nome'   => $item->produto_nome,
-                    'quantidade'     => $item->quantidade,
-                    'preco_unitario' => $item->preco_unitario,
-                    'subtotal'       => $item->subtotal,
+            $caixa = Caixa::caixaAberto();
+
+            if ($caixa) {
+                $pagamentos = $comanda->pagamentos->map(fn($p) => [
+                    'forma' => $p->forma,
+                    'valor' => (float) $p->valor,
+                    'troco' => 0,
+                ])->toArray();
+
+                $pedido = Pedido::create([
+                    'caixa_id'      => $caixa->id,
+                    'numero_pedido' => Pedido::gerarNumero(),
+                    'tipo'          => 'mesa',
+                    'mesa'          => $comanda->mesa,
+                    'subtotal'      => $comanda->total,
+                    'taxa_entrega'  => 0,
+                    'desconto'      => 0,
+                    'total'         => $comanda->total,
+                    'status'        => 'entregue',
+                    'pagamentos'    => $pagamentos,
+                    'atendente_id'  => $this->tenantUserId ?? 1,
                 ]);
+
+                foreach ($comanda->itens as $item) {
+                    PedidoItem::create([
+                        'pedido_id'      => $pedido->id,
+                        'produto_id'     => $item->produto_id,
+                        'produto_nome'   => $item->produto_nome,
+                        'quantidade'     => $item->quantidade,
+                        'preco_unitario' => $item->preco_unitario,
+                        'subtotal'       => $item->subtotal,
+                    ]);
+                }
+
+                $totais = $comanda->pagamentos
+                    ->groupBy('forma')
+                    ->map(fn($grupo) => $grupo->sum('valor'));
+
+                $caixa->increment('total_vendas', (float) $comanda->total);
+                $caixa->increment('quantidade_vendas');
+                $caixa->increment('total_dinheiro', $totais->get('dinheiro', 0));
+                $caixa->increment('total_credito', $totais->get('cartao_credito', 0));
+                $caixa->increment('total_debito', $totais->get('cartao_debito', 0));
+                $caixa->increment('total_pix', $totais->get('pix', 0));
             }
 
-            // Atualiza totais do caixa
-            $totais = $comanda->pagamentos->groupBy('forma')->map(fn($g) => $g->sum('valor'));
-            $caixa->increment('total_vendas', (float) $comanda->total);
-            $caixa->increment('quantidade_vendas');
-            $caixa->increment('total_dinheiro', $totais->get('dinheiro', 0));
-            $caixa->increment('total_credito',  $totais->get('cartao_credito', 0));
-            $caixa->increment('total_debito',   $totais->get('cartao_debito', 0));
-            $caixa->increment('total_pix',      $totais->get('pix', 0));
+            DB::commit();
+
+            $mesaFechada = $comanda->mesa;
+
+            $this->mostrarPagamento = false;
+            $this->limparCarrinho();
+            $this->mesa = '';
+            $this->comanda = '';
+            $this->comandaId = null;
+            $this->modoComanda = false;
+            $this->formaPagamento = 'dinheiro';
+
+            $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $mesaFechada . ' fechada!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('pdv-aviso', mensagem: 'Erro ao fechar comanda: ' . $e->getMessage());
         }
-
-        $this->mostrarPagamento = false;
-        $this->limparCarrinho();
-        $this->reset(['mesa', 'comandaId', 'modoComanda', 'pagamentos', 'valorPendente']);
-        $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $comanda->mesa . ' fechada!');
     }
-
-
-
-
-    // ─────────────────────────────────────────
-    // Render
-    // ─────────────────────────────────────────
-
-
-
-
 
     public function render()
     {
@@ -597,13 +665,11 @@ class Index extends Component
             ->where('ativo', true)
             ->when(
                 $this->categoriaSelecionada,
-                fn($q) =>
-                $q->where('categoria_id', $this->categoriaSelecionada)
+                fn($q) => $q->where('categoria_id', $this->categoriaSelecionada)
             )
             ->when(
                 $this->busca,
-                fn($q) =>
-                $q->where(function ($q2) {
+                fn($q) => $q->where(function ($q2) {
                     $q2->where('nome', 'like', '%' . $this->busca . '%')
                         ->orWhere('codigo', 'like', '%' . $this->busca . '%');
                 })

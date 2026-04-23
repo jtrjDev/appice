@@ -1,0 +1,11 @@
+[90m= [39m[34;4mApp\Models\Tenant[39;24m {#8261
+    [34mid[39m: [32m"[39m[32msorvete-novo[39m[32m"[39m,
+    [34mname[39m: [32m"[39m[32mSorvete Novo[39m[32m"[39m,
+    [34memail[39m: [32m"[39m[32mcontato@sorvetenovo.com[39m[32m"[39m,
+    [34mplan_id[39m: [35m2[39m,
+    [34mstatus[39m: [32m"[39m[32mactive[39m[32m"[39m,
+    [34mtrial_ends_at[39m: [32m"[39m[32m2026-05-22 13:14:15[39m[32m"[39m,
+    [34mcreated_at[39m: [36mnull[39m,
+    [34mupdated_at[39m: [36mnull[39m,
+    [34mdata[39m: [36mnull[39m,
+  }

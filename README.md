@@ -1,3 +1,36 @@
+comandos para usar no codespace
+# 1. Entrar no MySQL
+sudo mysql -u root
+
+# 2. Dentro do MySQL, ver os bancos:
+SHOW DATABASES;
+
+# 3. Usar o banco central:
+USE app_central;
+
+# 4. Ver as tabelas:
+SHOW TABLES;
+
+# 5. Ver os usuários (super admin):
+SELECT * FROM users;
+
+# 6. Ver os planos:
+SELECT * FROM plans;
+
+# 7. Ver os tenants:
+SELECT * FROM tenants;
+
+# Ver usuários
+sudo mysql -u root -e "USE app_central; SELECT * FROM users;"
+
+# Ver super admin especificamente
+sudo mysql -u root -e "USE app_central; SELECT * FROM users WHERE is_super_admin = 1;"
+
+# Ver planos
+sudo mysql -u root -e "USE app_central; SELECT * FROM plans;"
+
+
+
 ✅ Comandos corretos para sua versão:
 bash
 # Para rodar migrations em TODOS os tenants
@@ -51,3 +84,25 @@ php artisan tenants:create demo2
 
 # Listar tenants
 php artisan tenants:list
+
+
+# Iniciar o MySQL
+sudo service mysql start
+
+# Parar o MySQL
+sudo service mysql stop
+
+# Reiniciar o MySQL
+sudo service mysql restart
+
+# Verificar status
+sudo service mysql status
+
+# Verificar se está rodando
+sudo mysqladmin ping
+
+# Entrar como root (sem senha)
+sudo mysql -u root
+
+# Ou com senha (se tiver definido)
+mysql -u root -p

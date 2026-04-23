@@ -14,6 +14,9 @@ return [
     |
     */
 
+    'focus_nfe' => [
+        'token' => env('FOCUS_NFE_TOKEN'),
+    ],
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

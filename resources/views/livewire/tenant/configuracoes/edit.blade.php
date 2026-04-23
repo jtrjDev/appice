@@ -13,9 +13,8 @@
     @endif
 
     <form wire:submit="update">
-        <!-- Mesmo conteúdo do create.blade.php -->
         <div class="bg-white dark:bg-ink-900 rounded-lg border border-ink-200 dark:border-ink-800 overflow-hidden">
-            {{-- Abas (igual ao create) --}}
+            {{-- Abas --}}
             <div class="border-b border-ink-200 dark:border-ink-800 bg-ink-50 dark:bg-ink-800/50">
                 <nav class="flex gap-1 px-4 overflow-x-auto">
                     <button type="button" wire:click="$set('activeTab', 'empresa')"
@@ -58,16 +57,268 @@
             </div>
 
             <div class="p-6 space-y-6">
-                {{-- Conteúdo das abas (mesmo do create) --}}
-                @include('livewire.tenant.configuracoes.partials.form-empresa')
-                @include('livewire.tenant.configuracoes.partials.form-endereco')
-                @include('livewire.tenant.configuracoes.partials.form-contato')
-                @include('livewire.tenant.configuracoes.partials.form-logo')
-                @include('livewire.tenant.configuracoes.partials.form-nf')
-                @include('livewire.tenant.configuracoes.partials.form-certificado')
-                @include('livewire.tenant.configuracoes.partials.form-cupom')
-                @include('livewire.tenant.configuracoes.partials.form-fiscal')
-                @include('livewire.tenant.configuracoes.partials.form-webhook')
+                {{-- Aba: Empresa --}}
+                @if($activeTab == 'empresa')
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Razão Social *</label>
+                        <input type="text" wire:model="razao_social" class="w-full px-3 py-2 border rounded-lg">
+                        @error('razao_social') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Nome Fantasia</label>
+                        <input type="text" wire:model="nome_fantasia" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">CNPJ/CPF *</label>
+                        <input type="text" wire:model="cpf_cnpj" class="w-full px-3 py-2 border rounded-lg" placeholder="00.000.000/0000-00">
+                        @error('cpf_cnpj') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Inscrição Estadual</label>
+                        <input type="text" wire:model="inscricao_estadual" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Inscrição Municipal</label>
+                        <input type="text" wire:model="inscricao_municipal" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">RG (se aplicável)</label>
+                        <input type="text" wire:model="rg" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Endereço --}}
+                @if($activeTab == 'endereco')
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">CEP *</label>
+                        <input type="text" wire:model.live="cep" class="w-full px-3 py-2 border rounded-lg" placeholder="00000-000">
+                        @error('cep') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Endereço *</label>
+                        <input type="text" wire:model="endereco" class="w-full px-3 py-2 border rounded-lg">
+                        @error('endereco') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Número *</label>
+                        <input type="text" wire:model="numero" class="w-full px-3 py-2 border rounded-lg">
+                        @error('numero') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Complemento</label>
+                        <input type="text" wire:model="complemento" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Bairro *</label>
+                        <input type="text" wire:model="bairro" class="w-full px-3 py-2 border rounded-lg">
+                        @error('bairro') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Cidade *</label>
+                        <input type="text" wire:model="cidade" class="w-full px-3 py-2 border rounded-lg">
+                        @error('cidade') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Estado *</label>
+                        <select wire:model="estado" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="">Selecione</option>
+                            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                            <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                            <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                            <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                            <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                            <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                            <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                            <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                        </select>
+                        @error('estado') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Contato --}}
+                @if($activeTab == 'contato')
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Telefone</label>
+                        <input type="tel" wire:model="telefone" class="w-full px-3 py-2 border rounded-lg" placeholder="(11) 1234-5678">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">WhatsApp *</label>
+                        <input type="tel" wire:model="whatsapp" class="w-full px-3 py-2 border rounded-lg" placeholder="(11) 91234-5678">
+                        @error('whatsapp') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">E-mail *</label>
+                        <input type="email" wire:model="email_empresa" class="w-full px-3 py-2 border rounded-lg">
+                        @error('email_empresa') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Site</label>
+                        <input type="url" wire:model="site" class="w-full px-3 py-2 border rounded-lg" placeholder="https://www.exemplo.com.br">
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Logo --}}
+                @if($activeTab == 'logo')
+                <div>
+                    <div class="flex items-center gap-6">
+                        <div class="w-32 h-32 bg-ink-100 dark:bg-ink-800 rounded-lg flex items-center justify-center overflow-hidden">
+                            @if($logoPreview)
+                                <img src="{{ $logoPreview }}" class="w-full h-full object-cover">
+                            @elseif($logoAtual)
+                                <img src="{{ Storage::url($logoAtual) }}" class="w-full h-full object-cover">
+                            @else
+                                <svg class="size-12 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            @endif
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Logo da Empresa</label>
+                            <input type="file" wire:model="logo" accept="image/*" class="w-full">
+                            <p class="text-xs text-ink-500 mt-1">Formatos: JPG, PNG, GIF. Máx: 2MB</p>
+                            @if($logoAtual && !$logo)
+                                <p class="text-xs text-ink-500 mt-1">Logo atual: {{ basename($logoAtual) }}</p>
+                            @endif
+                            @error('logo') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Nota Fiscal --}}
+                @if($activeTab == 'nf')
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Último Número NF</label>
+                        <input type="text" wire:model="ultimo_numero_nf" class="w-full px-3 py-2 border rounded-lg" placeholder="1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Número Série</label>
+                        <input type="text" wire:model="numero_serie_nf" class="w-full px-3 py-2 border rounded-lg" placeholder="1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Ambiente</label>
+                        <select wire:model="ambiente_nf" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="homologacao">🏭 Homologação (Testes)</option>
+                            <option value="producao">✅ Produção (Real)</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" wire:model="emitir_nf_automatico" class="rounded">
+                            <span class="text-sm text-ink-700 dark:text-ink-300">
+                                Emitir nota fiscal automaticamente ao finalizar a venda (perguntar CPF/CNPJ)
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Certificado Digital --}}
+                @if($activeTab == 'certificado')
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Arquivo do Certificado (.pfx ou .p12)</label>
+                        <input type="file" wire:model="certificado" accept=".pfx,.p12" class="w-full">
+                        <p class="text-xs text-ink-500 mt-1">Arquivo do certificado digital A1 (válido por 1 ano)</p>
+                        @if($certificadoAtual)
+                            <p class="text-xs text-ink-500 mt-1">Certificado atual: {{ basename($certificadoAtual) }}</p>
+                        @endif
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Senha do Certificado</label>
+                        <input type="password" wire:model="certificado_senha" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Data de Validade</label>
+                        <input type="date" wire:model="certificado_validade" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Cupom Fiscal --}}
+                @if($activeTab == 'cupom')
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Cabeçalho do Cupom</label>
+                        <textarea wire:model="cabecalho_cupom" rows="3" class="w-full px-3 py-2 border rounded-lg" placeholder="=========================================
+          MINHA EMPRESA
+          CNPJ: 00.000.000/0000-00
+========================================="></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Rodapé do Cupom</label>
+                        <textarea wire:model="rodape_cupom" rows="3" class="w-full px-3 py-2 border rounded-lg" placeholder="=========================================
+    OBRIGADO PELA PREFERÊNCIA!
+    Volte sempre!
+========================================="></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Tema do Cupom</label>
+                        <select wire:model="tema_cupom" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="padrao">Padrão</option>
+                            <option value="moderno">Moderno</option>
+                            <option value="minimalista">Minimalista</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" wire:model="exibir_logo_cupom">
+                            <span class="text-sm text-ink-700 dark:text-ink-300">Exibir logo no cupom</span>
+                        </label>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Regime Fiscal --}}
+                @if($activeTab == 'fiscal')
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Regime Tributário</label>
+                        <select wire:model="regime_tributario" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="simples_nacional">Simples Nacional</option>
+                            <option value="lucro_presumido">Lucro Presumido</option>
+                            <option value="lucro_real">Lucro Real</option>
+                            <option value="mei">MEI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">CNAE (Código de Atividade)</label>
+                        <input type="text" wire:model="codigo_atividade" class="w-full px-3 py-2 border rounded-lg" placeholder="63.19-4-00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Código do Município (IBGE)</label>
+                        <input type="text" wire:model="codigo_municipio" class="w-full px-3 py-2 border rounded-lg" placeholder="4119905">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Código do País</label>
+                        <input type="text" wire:model="codigo_pais" class="w-full px-3 py-2 border rounded-lg" placeholder="1058 (Brasil)">
+                    </div>
+                </div>
+                @endif
+
+                {{-- Aba: Webhooks --}}
+                @if($activeTab == 'webhook')
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Webhook NFe</label>
+                        <input type="url" wire:model="webhook_nfe" class="w-full px-3 py-2 border rounded-lg" placeholder="https://seudominio.com/webhook/nfe">
+                        <p class="text-xs text-ink-500 mt-1">Receba notificações de atualização de NFe</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Webhook NFSe</label>
+                        <input type="url" wire:model="webhook_nfse" class="w-full px-3 py-2 border rounded-lg" placeholder="https://seudominio.com/webhook/nfse">
+                        <p class="text-xs text-ink-500 mt-1">Receba notificações de atualização de NFSe</p>
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
 

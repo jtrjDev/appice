@@ -147,7 +147,11 @@
                         <x-ui.icon :name="$pdv['icon']" class="size-4" />
                         {{ $pdv['label'] }}
                     </a>
-
+                    @php $notas = $navLink('tenant.notas.*', 'Notas Fiscais', 'file-text'); @endphp
+                    <a href="{{ route('tenant.notas.index') }}" wire:navigate class="{{ $notas['class'] }}">
+                        <x-ui.icon :name="$notas['icon']" class="size-4" />
+                        {{ $notas['label'] }}
+                    </a>
                     @php $mesa = $navLink('tenant.mesas', 'Mesas', 'table'); @endphp
                     <a href="{{ route('tenant.mesas') }}" wire:navigate class="{{ $mesa['class'] }}">
                         <x-ui.icon :name="$mesa['icon']" class="size-4" />

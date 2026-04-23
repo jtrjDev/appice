@@ -6,10 +6,11 @@ use App\Models\Tenant\Configuracao;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
+use App\Livewire\Traits\WithTenancy;
 
 class Edit extends Component
 {
-    use WithFileUploads;
+    use WithFileUploads, WithTenancy;
 
     public $configuracaoId;
     
@@ -45,6 +46,7 @@ class Edit extends Component
     public $ultimo_numero_nf = '';
     public $numero_serie_nf = '';
     public $ambiente_nf = 'homologacao';
+    public $emitir_nf_automatico = false; // NOVO CAMPO
     
     // Certificado Digital
     public $certificado;
@@ -99,6 +101,7 @@ class Edit extends Component
         'ultimo_numero_nf' => 'nullable|string|max:20',
         'numero_serie_nf' => 'nullable|string|max:10',
         'ambiente_nf' => 'required|in:homologacao,producao',
+        'emitir_nf_automatico' => 'boolean',
         
         // Certificado
         'certificado_senha' => 'nullable|string|max:255',
@@ -128,9 +131,18 @@ class Edit extends Component
         'email_empresa.required' => 'O e-mail da empresa é obrigatório.',
     ];
 
-    public function mount(Configuracao $configuracao)
+    public function mount()
     {
-        $this->configuracaoId = $configuracao->id;
+        // Pegar o ID da URL (igual ao cliente)
+        $this->configuracaoId = request()->route('configuracao');
+        
+        // Buscar a configuração dentro do tenant
+        $configuracao = Configuracao::find($this->configuracaoId);
+        
+        if (!$configuracao) {
+            session()->flash('error', 'Configuração não encontrada.');
+            return redirect()->route('tenant.configuracoes.index');
+        }
         
         // Carregar dados da empresa
         $this->razao_social = $configuracao->razao_social;
@@ -162,6 +174,7 @@ class Edit extends Component
         $this->ultimo_numero_nf = $configuracao->ultimo_numero_nf;
         $this->numero_serie_nf = $configuracao->numero_serie_nf;
         $this->ambiente_nf = $configuracao->ambiente_nf;
+        $this->emitir_nf_automatico = $configuracao->emitir_nf_automatico ?? false;
         
         // Certificado
         $this->certificadoAtual = $configuracao->certificado_path;
@@ -249,6 +262,7 @@ class Edit extends Component
                 'ultimo_numero_nf' => $this->ultimo_numero_nf,
                 'numero_serie_nf' => $this->numero_serie_nf,
                 'ambiente_nf' => $this->ambiente_nf,
+                'emitir_nf_automatico' => $this->emitir_nf_automatico,
                 'certificado_senha' => $this->certificado_senha,
                 'cabecalho_cupom' => $this->cabecalho_cupom,
                 'rodape_cupom' => $this->rodape_cupom,
@@ -264,7 +278,6 @@ class Edit extends Component
 
             // Upload do novo logo
             if ($this->logo) {
-                // Remove logo antigo se existir
                 if ($this->logoAtual && Storage::disk('public')->exists($this->logoAtual)) {
                     Storage::disk('public')->delete($this->logoAtual);
                 }

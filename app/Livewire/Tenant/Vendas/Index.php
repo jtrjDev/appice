@@ -7,12 +7,20 @@ use App\Models\Tenant\Cliente;
 use App\Models\Tenant\Caixa;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Jobs\EmitirNotaFiscal; // <-- ADICIONE ESTA LINHA
 use Livewire\Attributes\Computed;
 
 
 class Index extends Component
 {
     use WithPagination;
+
+     // Modal NF
+    public $mostrarModalNF = false;
+    public $pedidoSelecionado = null;
+    public $cpfCnpjNF = '';
+    public $nomeClienteNF = '';
+    public $tipoDocumentoNF = 'CPF';
 
     public string $busca = '';
     public string $dataInicio = '';
@@ -36,6 +44,70 @@ class Index extends Component
     public function updatingCaixaId(): void { $this->resetPage(); }
     public function updatingStatus(): void { $this->resetPage(); }
 
+    
+
+    protected $rules = [
+        'cpfCnpjNF' => 'required|string|min:11|max:18',
+        'nomeClienteNF' => 'required|string|min:3',
+    ];
+
+
+public function testarModal()
+{
+    $this->mostrarModalNF = true;
+    session()->flash('success', 'Teste: modal deveria abrir');
+}
+
+ public function abrirModalNF($pedidoId)
+{
+    // Removeu o dd
+    $this->pedidoSelecionado = Pedido::find($pedidoId);
+    $this->cpfCnpjNF = '';
+    $this->nomeClienteNF = '';
+    $this->tipoDocumentoNF = 'CPF';
+    $this->mostrarModalNF = true;
+    
+    // Flash para confirmar que o método foi executado
+    session()->flash('success', 'Modal deveria abrir para o pedido ' . $pedidoId);
+}
+    public function fecharModalNF()
+    {
+        $this->mostrarModalNF = false;
+        $this->pedidoSelecionado = null;
+        $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
+    }
+
+    public function emitirNotaComDocumento()
+    {
+        $this->validate();
+
+        $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF);
+        
+        // Verificar se é CPF (11 dígitos) ou CNPJ (14 dígitos)
+        $tipo = strlen($cpfCnpj) == 11 ? 'cpf' : 'cnpj';
+        $modelo = $tipo == 'cpf' ? 'nfce' : 'nfe';
+        
+        // Criar cliente logo com os dados informados
+        $cliente = Cliente::updateOrCreate(
+            ['cpf_cnpj' => $cpfCnpj],
+            [
+                'nome' => $this->nomeClienteNF,
+                'ativo' => true,
+            ]
+        );
+        
+        // Associar cliente ao pedido
+        $this->pedidoSelecionado->cliente_id = $cliente->id;
+        $this->pedidoSelecionado->save();
+        
+        // Dispara a job
+        EmitirNotaFiscal::dispatch($this->pedidoSelecionado->id, tenant()->id);
+        
+        session()->flash('success', "Nota fiscal ($modelo) solicitada para {$this->nomeClienteNF}!");
+        
+        $this->fecharModalNF();
+    }
+
 
 public function abrirCupom(int $id): void
 {
@@ -49,6 +121,29 @@ public function fecharCupom(): void
     $this->mostrarCupom = false;
     $this->pedidoCupomId = null;
     $this->pedidoCupom = null;
+}
+
+public function emitirNota($pedidoId)
+{
+    try {
+        $pedido = Pedido::find($pedidoId);
+        
+        if (!$pedido->cliente || !$pedido->cliente->cpf_cnpj) {
+            $this->dispatch('pdv-aviso', mensagem: 'Cliente sem CPF/CNPJ cadastrado. Edite o cliente e adicione o documento.');
+            return;
+        }
+        
+        // Dispara a job
+        EmitirNotaFiscal::dispatch($pedidoId, tenant()->id);
+        
+        $this->dispatch('pdv-sucesso', mensagem: 'Nota fiscal solicitada com sucesso!');
+        
+        // Opcional: recarregar a página para mostrar a nota
+        // $this->dispatch('refresh-component');
+        
+    } catch (\Exception $e) {
+        $this->dispatch('pdv-aviso', mensagem: 'Erro: ' . $e->getMessage());
+    }
 }
 
     public function limparFiltros(): void

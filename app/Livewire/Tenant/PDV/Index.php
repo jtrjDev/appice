@@ -15,9 +15,26 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\Attributes\Url;//para receber a mesa
 use Livewire\Attributes\Computed;
+use App\Jobs\EmitirNotaFiscal;
+use Tenancy\Facades\Tenancy;
+
 
 class Index extends Component
 {
+
+    // Propriedades para o modal de NF
+    public $mostrarModalNF = false;
+    public $cpfCnpjNF = '';
+    public $nomeClienteNF = '';
+    public $tipoDocumentoNF = 'CPF';
+    public $pedidoTempId = null;
+
+    protected $rules = [
+        'cpfCnpjNF' => 'required|string|min:11|max:18',
+        'nomeClienteNF' => 'required|string|min:3',
+    ];
+
+
     // Filtros
     public ?int $categoriaSelecionada = null;
     public string $busca = '';
@@ -54,6 +71,7 @@ class Index extends Component
         $this->valorPendente = 0;
         $this->valorPagamento = 0;
         $this->formaPagamento = 'dinheiro';
+        $this->mostrarModalNF = false; // Inicializa modal
    
         if ($this->mesa) {
            
@@ -329,90 +347,148 @@ class Index extends Component
     }
 
     public function finalizarVenda(): void
-    {
-        if (empty($this->carrinho)) {
-            $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
-            return;
-        }
-
-        $this->recalcularPendente(false);
-
-        if (!$this->modoComanda && $this->valorPendente > 0) {
-            $this->dispatch(
-                'pdv-aviso',
-                mensagem: 'Ainda falta R$ ' . number_format($this->valorPendente, 2, ',', '.') . ' para concluir a venda.'
-            );
-            return;
-        }
-
-        $caixa = Caixa::caixaAberto();
-
-        if (! $caixa) {
-            $this->dispatch('pdv-aviso', mensagem: 'Nenhum caixa aberto! Abra o caixa antes de vender.');
-            $this->mostrarPagamento = false;
-            return;
-        }
-
-        DB::beginTransaction();
-
-        try {
-            $subtotal = $this->totalCarrinho;
-
-            $pedido = Pedido::create([
-                'caixa_id'      => $caixa->id,
-                'numero_pedido' => Pedido::gerarNumero(),
-                'cliente_id'    => $this->clienteId ?: null,
-                'tipo'          => 'balcao',
-                'mesa'          => $this->mesa ?: null,
-                'subtotal'      => $subtotal,
-                'taxa_entrega'  => 0,
-                'desconto'      => 0,
-                'total'         => $subtotal,
-                'status'        => 'entregue',
-                'pagamentos'    => $this->pagamentos,
-                'atendente_id'  => $this->tenantUserId ?? 1,
-            ]);
-
-            foreach ($this->carrinho as $item) {
-                PedidoItem::create([
-                    'pedido_id'      => $pedido->id,
-                    'produto_id'     => $item['id'],
-                    'produto_nome'   => $item['nome'],
-                    'quantidade'     => $item['quantidade'],
-                    'preco_unitario' => $item['preco'],
-                    'subtotal'       => $item['subtotal'],
-                ]);
-            }
-
-            $totaisPagamentos = collect($this->pagamentos)
-                ->groupBy('forma')
-                ->map(fn($grupo) => $grupo->sum('valor'));
-
-            $caixa->increment('total_vendas', $subtotal);
-            $caixa->increment('quantidade_vendas');
-            $caixa->increment('total_dinheiro', $totaisPagamentos->get('dinheiro', 0));
-            $caixa->increment('total_credito', $totaisPagamentos->get('cartao_credito', 0));
-            $caixa->increment('total_debito', $totaisPagamentos->get('cartao_debito', 0));
-            $caixa->increment('total_pix', $totaisPagamentos->get('pix', 0));
-
-            DB::commit();
-
-            $this->mostrarPagamento = false;
-            $this->limparCarrinho();
-            $this->mesa = '';
-            $this->comanda = '';
-            $this->clienteId = null;
-            $this->observacao = '';
-            $this->modoComanda = false;
-            $this->comandaId = null;
-            $this->formaPagamento = 'dinheiro';
-
-            $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado!");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->dispatch('pdv-aviso', mensagem: 'Erro ao finalizar venda: ' . $e->getMessage());
-        }
+{
+    if (empty($this->carrinho)) {
+        $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
+        return;
     }
+
+    $this->recalcularPendente(false);
+
+    if (!$this->modoComanda && $this->valorPendente > 0) {
+        $this->dispatch(
+            'pdv-aviso',
+            mensagem: 'Ainda falta R$ ' . number_format($this->valorPendente, 2, ',', '.') . ' para concluir a venda.'
+        );
+        return;
+    }
+
+    $caixa = Caixa::caixaAberto();
+
+    if (! $caixa) {
+        $this->dispatch('pdv-aviso', mensagem: 'Nenhum caixa aberto! Abra o caixa antes de vender.');
+        $this->mostrarPagamento = false;
+        return;
+    }
+
+    DB::beginTransaction();
+
+    try {
+        $subtotal = $this->totalCarrinho;
+
+        $pedido = Pedido::create([
+            'caixa_id'      => $caixa->id,
+            'numero_pedido' => Pedido::gerarNumero(),
+            'cliente_id'    => $this->clienteId ?: null,
+            'tipo'          => 'balcao',
+            'mesa'          => $this->mesa ?: null,
+            'subtotal'      => $subtotal,
+            'taxa_entrega'  => 0,
+            'desconto'      => 0,
+            'total'         => $subtotal,
+            'status'        => 'entregue',
+            'pagamentos'    => $this->pagamentos,
+            'atendente_id'  => $this->tenantUserId ?? 1,
+        ]);
+
+        foreach ($this->carrinho as $item) {
+            PedidoItem::create([
+                'pedido_id'      => $pedido->id,
+                'produto_id'     => $item['id'],
+                'produto_nome'   => $item['nome'],
+                'quantidade'     => $item['quantidade'],
+                'preco_unitario' => $item['preco'],
+                'subtotal'       => $item['subtotal'],
+            ]);
+        }
+
+        $totaisPagamentos = collect($this->pagamentos)
+            ->groupBy('forma')
+            ->map(fn($grupo) => $grupo->sum('valor'));
+
+        $caixa->increment('total_vendas', $subtotal);
+        $caixa->increment('quantidade_vendas');
+        $caixa->increment('total_dinheiro', $totaisPagamentos->get('dinheiro', 0));
+        $caixa->increment('total_credito', $totaisPagamentos->get('cartao_credito', 0));
+        $caixa->increment('total_debito', $totaisPagamentos->get('cartao_debito', 0));
+        $caixa->increment('total_pix', $totaisPagamentos->get('pix', 0));
+        
+        DB::commit();
+
+        // Limpar carrinho e modal de pagamento
+        $this->mostrarPagamento = false;
+        $this->limparCarrinho();
+        $this->mesa = '';
+        $this->comanda = '';
+        $this->observacao = '';
+        $this->modoComanda = false;
+        $this->comandaId = null;
+        $this->formaPagamento = 'dinheiro';
+
+        // Verifica se deve perguntar sobre emitir nota fiscal
+        $config = Configuracao::first();
+        
+        // Se já tem cliente com CPF/CNPJ, emite automaticamente
+        if ($pedido->cliente_id && $pedido->cliente && $pedido->cliente->cpf_cnpj) {
+            EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
+            $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado! NF solicitada.");
+        } 
+        // Se não tem cliente ou não tem CPF, pergunta se quer emitir
+        elseif ($config && $config->emitir_nf_automatico) {
+            // Salva o pedido temporariamente e abre modal
+            $this->pedidoTempId = $pedido->id;
+            $this->mostrarModalNF = true;
+            $this->dispatch('pdv-info', mensagem: "Deseja emitir nota fiscal? Preencha os dados.");
+        } 
+        // Não emite nota
+        else {
+            $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado!");
+        }
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        $this->dispatch('pdv-aviso', mensagem: 'Erro ao finalizar venda: ' . $e->getMessage());
+    }
+}
+
+// Adicione este método para emitir nota após o modal
+public function emitirNotaDaVenda()
+{
+    $this->validate([
+        'cpfCnpjNF' => 'required|string|min:11|max:18',
+        'nomeClienteNF' => 'required|string|min:3',
+    ]);
+    
+    $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF);
+    
+    // Criar ou buscar cliente
+    $cliente = Cliente::updateOrCreate(
+        ['cpf_cnpj' => $cpfCnpj],
+        ['nome' => $this->nomeClienteNF, 'ativo' => true]
+    );
+    
+    // Associar ao pedido
+    $pedido = Pedido::find($this->pedidoTempId);
+    $pedido->cliente_id = $cliente->id;
+    $pedido->save();
+    
+    // Disparar emissão da NF
+    EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
+    
+    $this->mostrarModalNF = false;
+    $this->pedidoTempId = null;
+    $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
+    
+    $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado com NF solicitada!");
+}
+
+public function finalizarSemNF()
+{
+    $this->mostrarModalNF = false;
+    $this->pedidoTempId = null;
+    $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
+    $this->dispatch('pdv-sucesso', mensagem: "Pedido finalizado sem nota fiscal!");
+}
 
     public function updatedMesa(): void
     {

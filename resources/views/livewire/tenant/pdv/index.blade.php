@@ -346,7 +346,37 @@
             </div>
         </div>
     </div>
-
+{{-- MODAL PARA NF NA FINALIZAÇÃO --}}
+@if($mostrarModalNF)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white dark:bg-ink-900 rounded-lg w-full max-w-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Nota Fiscal</h2>
+        <p class="text-sm text-ink-500 mb-4">Deseja emitir nota fiscal para esta venda?</p>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">CPF / CNPJ</label>
+                <input type="text" wire:model="cpfCnpjNF" 
+                    class="w-full px-3 py-2 border rounded-lg" 
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00">
+                @error('cpfCnpjNF') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Nome do Cliente</label>
+                <input type="text" wire:model="nomeClienteNF" 
+                    class="w-full px-3 py-2 border rounded-lg" 
+                    placeholder="Nome completo">
+                @error('nomeClienteNF') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 mt-6">
+            <button wire:click="finalizarSemNF" class="px-4 py-2 border rounded-lg">Não emitir</button>
+            <button wire:click="emitirNotaDaVenda" class="px-4 py-2 bg-ink-900 text-white rounded-lg">Emitir Nota</button>
+        </div>
+    </div>
+</div>
+@endif
     @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {

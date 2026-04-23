@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "35e737213df434dc6ac83d817a5cb32e",
+    "content-hash": "59d96d91f2d7b2e194d3eea277b94501",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -1619,6 +1619,69 @@
                 "source": "https://github.com/laravel/prompts/tree/v0.3.16"
             },
             "time": "2026-03-23T14:35:33+00:00"
+        },
+        {
+            "name": "laravel/sanctum",
+            "version": "v4.3.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/sanctum.git",
+                "reference": "e3b85d6e36ad00e5db2d1dcc27c81ffdf15cbf76"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/sanctum/zipball/e3b85d6e36ad00e5db2d1dcc27c81ffdf15cbf76",
+                "reference": "e3b85d6e36ad00e5db2d1dcc27c81ffdf15cbf76",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "illuminate/console": "^11.0|^12.0|^13.0",
+                "illuminate/contracts": "^11.0|^12.0|^13.0",
+                "illuminate/database": "^11.0|^12.0|^13.0",
+                "illuminate/support": "^11.0|^12.0|^13.0",
+                "php": "^8.2",
+                "symfony/console": "^7.0|^8.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.15|^10.8|^11.0",
+                "phpstan/phpstan": "^1.10"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Laravel\\Sanctum\\SanctumServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laravel\\Sanctum\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "Laravel Sanctum provides a featherweight authentication system for SPAs and simple APIs.",
+            "keywords": [
+                "auth",
+                "laravel",
+                "sanctum"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/sanctum/issues",
+                "source": "https://github.com/laravel/sanctum"
+            },
+            "time": "2026-02-07T17:19:31+00:00"
         },
         {
             "name": "laravel/serializable-closure",
@@ -6628,6 +6691,82 @@
                 }
             ],
             "time": "2026-03-30T13:44:50+00:00"
+        },
+        {
+            "name": "sysborg/focusnfe",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sysborg/focusnfe.git",
+                "reference": "6e23de991fd6e9e8c7ec5d1e1b2056df7f78fe6c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sysborg/focusnfe/zipball/6e23de991fd6e9e8c7ec5d1e1b2056df7f78fe6c",
+                "reference": "6e23de991fd6e9e8c7ec5d1e1b2056df7f78fe6c",
+                "shasum": ""
+            },
+            "require": {
+                "laravel/framework": ">=9.0",
+                "laravel/sanctum": ">=2.11",
+                "php": ">=8.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.21",
+                "nunomaduro/larastan": "^2.9",
+                "pestphp/pest": "^2.36",
+                "phpstan/phpstan": "^1.12",
+                "phpunit/phpunit": "^10.5"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "FocusNfe": "Sysborg\\FocusNfe\\app\\Facades\\FocusNfe"
+                    },
+                    "providers": [
+                        "Sysborg\\FocusNfe\\app\\Providers\\SBFocusNFeProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Sysborg\\FocusNfe\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sysborg",
+                    "email": "contato@sysborg.com.br"
+                },
+                {
+                    "name": "Anderson Arruda",
+                    "email": "andmarruda@gmail.com"
+                },
+                {
+                    "name": "Eder Venancio"
+                }
+            ],
+            "description": "Integração Laravel com a FocusNFe para NFe, NFCe, CTe, MDFe e NFSe",
+            "keywords": [
+                "cte",
+                "fiscal",
+                "focus",
+                "laravel",
+                "mdfe",
+                "nfce",
+                "nfe",
+                "sefaz"
+            ],
+            "support": {
+                "issues": "https://github.com/sysborg/focusnfe/issues",
+                "source": "https://github.com/sysborg/focusnfe/tree/1.0.0"
+            },
+            "time": "2026-04-08T16:03:32+00:00"
         },
         {
             "name": "thecodingmachine/safe",

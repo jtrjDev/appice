@@ -203,6 +203,14 @@
                             <option value="producao">✅ Produção (Real)</option>
                         </select>
                     </div>
+                    <div class="mt-4">
+    <label class="flex items-center gap-2">
+        <input type="checkbox" wire:model="emitir_nf_automatico" class="rounded">
+        <span class="text-sm text-ink-700 dark:text-ink-300">
+            Emitir nota fiscal automaticamente ao finalizar a venda (perguntar CPF/CNPJ)
+        </span>
+    </label>
+</div>
                 </div>
                 @endif
 
@@ -283,6 +291,7 @@
                         <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Código do País</label>
                         <input type="text" wire:model="codigo_pais" class="w-full px-3 py-2 border rounded-lg" placeholder="1058 (Brasil)">
                     </div>
+                    
                 </div>
                 @endif
 

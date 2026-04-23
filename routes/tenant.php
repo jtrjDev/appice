@@ -19,7 +19,9 @@ use App\Livewire\Tenant\Produtos\Edit as ProdutosEdit;
 use App\Livewire\Tenant\Vendas\Index as VendasIndex;
 use App\Livewire\Tenant\Vendas\Show as VendasShow;
 use App\Http\Controllers\Tenant\VendaCupomController;
-
+use App\Livewire\Tenant\Notas\Index as NotasIndex;
+use App\Http\Controllers\Tenant\NotaFiscalController;
+use App\Livewire\Tenant\Notas\Show as NotasShow;
 use Illuminate\Support\Facades\DB;
 
 Route::middleware(['web', 'auth:web', 'tenant.auth'])
@@ -48,6 +50,12 @@ Route::get('/vendas', VendasIndex::class)->name('vendas');
 Route::get('/vendas/{id}', VendasShow::class)->name('vendas.show');
 Route::get('/vendas/{id}/cupom', [VendaCupomController::class, 'show'])->name('vendas.cupom');
 Route::get('/vendas/{id}/cupom/pdf', [VendaCupomController::class, 'pdf'])->name('vendas.cupom.pdf');
+Route::get('/notas', NotasIndex::class)->name('notas.index');
+Route::get('/notas/{nota}/consultar', [NotaFiscalController::class, 'consultar'])->name('notas.consultar');
+Route::get('/notas/{nota}/xml', [NotaFiscalController::class, 'downloadXml'])->name('notas.download-xml');
+Route::get('/notas/{nota}/pdf', [NotaFiscalController::class, 'downloadPdf'])->name('notas.download-pdf');
+Route::get('/notas/{nota}', NotasShow::class)->name('notas.show');
+
 // dentro do grupo:
 Route::get('/mesas', PDVMesas::class)->name('mesas');
     });

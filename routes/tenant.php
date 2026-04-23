@@ -16,7 +16,9 @@ use App\Livewire\Tenant\Configuracoes\Edit as ConfiguracoesEdit;
 use App\Livewire\Tenant\Produtos\Index as ProdutosIndex;
 use App\Livewire\Tenant\Produtos\Create as ProdutosCreate;
 use App\Livewire\Tenant\Produtos\Edit as ProdutosEdit;
-
+use App\Livewire\Tenant\Vendas\Index as VendasIndex;
+use App\Livewire\Tenant\Vendas\Show as VendasShow;
+use App\Http\Controllers\Tenant\VendaCupomController;
 
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +44,10 @@ Route::get('/produtos', ProdutosIndex::class)->name('produtos.index');
 Route::get('/produtos/create', ProdutosCreate::class)->name('produtos.create');
 Route::get('/produtos/{produto}/edit', ProdutosEdit::class)->name('produtos.edit');
 
+Route::get('/vendas', VendasIndex::class)->name('vendas');
+Route::get('/vendas/{id}', VendasShow::class)->name('vendas.show');
+Route::get('/vendas/{id}/cupom', [VendaCupomController::class, 'show'])->name('vendas.cupom');
+Route::get('/vendas/{id}/cupom/pdf', [VendaCupomController::class, 'pdf'])->name('vendas.cupom.pdf');
 // dentro do grupo:
 Route::get('/mesas', PDVMesas::class)->name('mesas');
     });

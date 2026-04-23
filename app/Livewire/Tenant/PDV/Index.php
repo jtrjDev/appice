@@ -13,6 +13,7 @@ use App\Models\Tenant\ComandaPagamento;
 use App\Models\Tenant\PedidoItem;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Livewire\Attributes\Url;//para receber a mesa
 use Livewire\Attributes\Computed;
 
 class Index extends Component
@@ -31,7 +32,8 @@ class Index extends Component
     public bool $modoComanda = false;
 
     // Venda
-    public string $mesa = '';
+    #[Url]
+    public ?string $mesa = null;
     public string $comanda = '';
     public ?int $clienteId = null;
     public string $observacao = '';
@@ -44,7 +46,7 @@ class Index extends Component
     public string $formaPagamento = 'dinheiro';
     public ?int $tenantUserId = null;
 
-    public function mount(?string $mesa = null): void
+    public function mount(): void
     {
         $this->tenantUserId = \App\Models\Tenant\User::where('email', auth()->user()->email)->value('id');
         $this->carrinho = session('pdv_carrinho', []);
@@ -52,9 +54,9 @@ class Index extends Component
         $this->valorPendente = 0;
         $this->valorPagamento = 0;
         $this->formaPagamento = 'dinheiro';
-
-        if ($mesa) {
-            $this->mesa = $mesa;
+   
+        if ($this->mesa) {
+           
             $this->updatedMesa();
         }
 
@@ -415,7 +417,6 @@ class Index extends Component
     public function updatedMesa(): void
     {
         $mesa = trim($this->mesa);
-
         if (strlen($mesa) < 1) {
             $this->modoComanda = false;
             $this->comandaId = null;

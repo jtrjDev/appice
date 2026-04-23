@@ -16,21 +16,24 @@
         })();
     </script>
 
-@php
-    $manifestPath = public_path('build/manifest.json');
-    if (file_exists($manifestPath)) {
-        $manifest = json_decode(file_get_contents($manifestPath), true);
-        $cssFile = $manifest['resources/css/app.css']['file'] ?? 'app-B3ehL459.css';
-        $jsFile = $manifest['resources/js/app.js']['file'] ?? 'app-BjoUdjsi.js';
-    } else {
-        $cssFile = 'app-B3ehL459.css';
-        $jsFile = 'app-BjoUdjsi.js';
-    }
-@endphp
+    @php
+        $manifestPath = public_path('build/manifest.json');
 
-<link rel="stylesheet" href="{{ url('/build/' . $cssFile) }}">
-<script src="{{ url('/build/' . $jsFile) }}" defer></script>
+        if (file_exists($manifestPath)) {
+            $manifest = json_decode(file_get_contents($manifestPath), true);
+            $cssFile = $manifest['resources/css/app.css']['file'] ?? 'app-B3ehL459.css';
+            $jsFile = $manifest['resources/js/app.js']['file'] ?? 'app-BjoUdjsi.js';
+        } else {
+            $cssFile = 'app-B3ehL459.css';
+            $jsFile = 'app-BjoUdjsi.js';
+        }
+    @endphp
+
+    <link rel="stylesheet" href="{{ url('/build/' . $cssFile) }}">
+    <script src="{{ url('/build/' . $jsFile) }}" defer></script>
+
     @livewireStyles
+    @stack('styles')
 </head>
 <body class="font-sans antialiased min-h-screen bg-white dark:bg-ink-950">
 
@@ -58,9 +61,15 @@
                         $navLink = function($route, $label, $icon, $disabled = false) {
                             $active = !$disabled && request()->routeIs($route);
                             $base = 'inline-flex items-center gap-2 h-8 px-3 text-sm font-medium rounded-md transition-colors';
+
                             if ($disabled) {
-                                return ['class' => $base . ' text-ink-400 dark:text-ink-600 cursor-not-allowed', 'label' => $label, 'icon' => $icon];
+                                return [
+                                    'class' => $base . ' text-ink-400 dark:text-ink-600 cursor-not-allowed',
+                                    'label' => $label,
+                                    'icon' => $icon,
+                                ];
                             }
+
                             return [
                                 'class' => $base . ($active
                                     ? ' bg-ink-100 text-ink-900 dark:bg-ink-800 dark:text-ink-50'
@@ -69,6 +78,8 @@
                                 'icon' => $icon,
                             ];
                         };
+
+                        $caixaMenuActive = request()->routeIs('tenant.caixa') || request()->routeIs('tenant.vendas*');
                     @endphp
 
                     @php $dash = $navLink('tenant.dashboard', 'Dashboard', 'dashboard'); @endphp
@@ -82,20 +93,62 @@
                         <x-ui.icon :name="$produtos['icon']" class="size-4" />
                         {{ $produtos['label'] }}
                     </a>
-                   
-                    @php $caixa = $navLink('tenant.caixa', 'CAIXA', 'table'); @endphp
-                    <a href="{{ route('tenant.caixa') }}" wire:navigate class="{{ $caixa['class'] }}">
-                        <x-ui.icon :name="$caixa['icon']" class="size-4" />
-                        {{ $caixa['label'] }}
-                    </a>
-                    
+
+                    {{-- CAIXA COM SUBMENU --}}
+                    <div x-data="{ open: false }" class="relative">
+                        <button
+                            type="button"
+                            @click="open = !open"
+                            @click.outside="open = false"
+                            class="inline-flex items-center gap-2 h-8 px-3 text-sm font-medium rounded-md transition-colors
+                                {{ $caixaMenuActive
+                                    ? 'bg-ink-100 text-ink-900 dark:bg-ink-800 dark:text-ink-50'
+                                    : 'text-ink-600 hover:text-ink-900 hover:bg-ink-50 dark:text-ink-400 dark:hover:text-ink-100 dark:hover:bg-ink-800/50' }}"
+                        >
+                            <x-ui.icon name="table" class="size-4" />
+                            Caixa
+                            <x-ui.icon name="chevron-down" class="size-3" />
+                        </button>
+
+                        <div
+                            x-show="open"
+                            x-cloak
+                            x-transition
+                            class="absolute left-0 mt-2 w-60 rounded-lg bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-md py-1 z-50"
+                        >
+                            <a
+                                href="{{ route('tenant.caixa') }}"
+                                wire:navigate
+                                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors
+                                    {{ request()->routeIs('tenant.caixa')
+                                        ? 'bg-ink-50 dark:bg-ink-800 text-ink-900 dark:text-ink-50'
+                                        : 'text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800' }}"
+                            >
+                                <x-ui.icon name="table" class="size-4" />
+                                Controle de Caixa
+                            </a>
+
+                            <a
+                                href="{{ route('tenant.vendas') }}"
+                                wire:navigate
+                                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors
+                                    {{ request()->routeIs('tenant.vendas*')
+                                        ? 'bg-ink-50 dark:bg-ink-800 text-ink-900 dark:text-ink-50'
+                                        : 'text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800' }}"
+                            >
+                                <x-ui.icon name="shopping-cart" class="size-4" />
+                                Histórico de Vendas
+                            </a>
+                        </div>
+                    </div>
+
                     @php $pdv = $navLink('tenant.pdv', 'PDV', 'shopping-cart'); @endphp
                     <a href="{{ route('tenant.pdv') }}" wire:navigate class="{{ $pdv['class'] }}">
                         <x-ui.icon :name="$pdv['icon']" class="size-4" />
                         {{ $pdv['label'] }}
                     </a>
-                    
-                    @php $mesa = $navLink('tenant.mesas', 'MESA', 'table'); @endphp
+
+                    @php $mesa = $navLink('tenant.mesas', 'Mesas', 'table'); @endphp
                     <a href="{{ route('tenant.mesas') }}" wire:navigate class="{{ $mesa['class'] }}">
                         <x-ui.icon :name="$mesa['icon']" class="size-4" />
                         {{ $mesa['label'] }}
@@ -107,7 +160,6 @@
                         {{ $clientes['label'] }}
                     </a>
 
-                    {{-- CONFIGURAÇÕES --}}
                     @php $config = $navLink('tenant.configuracoes.*', 'Configurações', 'settings'); @endphp
                     <a href="{{ route('tenant.configuracoes.index') }}" wire:navigate class="{{ $config['class'] }}">
                         <x-ui.icon :name="$config['icon']" class="size-4" />
@@ -115,36 +167,47 @@
                     </a>
                 </nav>
 
-                {{-- Espaço flexível --}}
                 <div class="flex-1"></div>
 
                 {{-- Ações direita --}}
                 <div class="flex items-center gap-2">
                     {{-- Toggle dark mode --}}
-                    <button type="button" onclick="window.themeManager.toggle()" 
-                            class="size-8 inline-flex items-center justify-center rounded-md text-ink-600 hover:text-ink-900 hover:bg-ink-100 dark:text-ink-400 dark:hover:text-ink-100 dark:hover:bg-ink-800 transition-colors"
-                            title="Alternar tema">
+                    <button
+                        type="button"
+                        onclick="window.themeManager?.toggle?.()"
+                        class="size-8 inline-flex items-center justify-center rounded-md text-ink-600 hover:text-ink-900 hover:bg-ink-100 dark:text-ink-400 dark:hover:text-ink-100 dark:hover:bg-ink-800 transition-colors"
+                        title="Alternar tema"
+                    >
                         <x-ui.icon name="sun" class="size-4 block dark:hidden" />
                         <x-ui.icon name="moon" class="size-4 hidden dark:block" />
                     </button>
 
                     {{-- User dropdown --}}
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @click.outside="open = false"
-                                class="inline-flex items-center gap-2 h-8 pl-1 pr-2 rounded-md hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors">
+                        <button
+                            @click="open = !open"
+                            @click.outside="open = false"
+                            class="inline-flex items-center gap-2 h-8 pl-1 pr-2 rounded-md hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors"
+                        >
                             <div class="size-6 rounded-full bg-gradient-to-br from-ink-700 to-ink-900 dark:from-ink-200 dark:to-ink-50 flex items-center justify-center">
                                 <span class="text-[10px] font-semibold text-white dark:text-ink-900">
                                     {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
                                 </span>
                             </div>
+
                             <span class="text-sm font-medium text-ink-900 dark:text-ink-100 hidden md:inline">
                                 {{ explode(' ', auth()->user()->name)[0] }}
                             </span>
+
                             <x-ui.icon name="chevron-down" class="size-3 text-ink-500" />
                         </button>
 
-                        <div x-show="open" x-cloak x-transition
-                             class="absolute right-0 mt-2 w-56 origin-top-right rounded-lg bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-md py-1 z-50">
+                        <div
+                            x-show="open"
+                            x-cloak
+                            x-transition
+                            class="absolute right-0 mt-2 w-56 origin-top-right rounded-lg bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-md py-1 z-50"
+                        >
                             <div class="px-3 py-2 border-b border-ink-100 dark:border-ink-800">
                                 <p class="text-sm font-medium text-ink-900 dark:text-ink-50 truncate">
                                     {{ auth()->user()->name }}
@@ -153,16 +216,19 @@
                                     {{ auth()->user()->email }}
                                 </p>
                             </div>
+
                             <div class="py-1">
                                 <a href="#" class="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800">
                                     <x-ui.icon name="user" class="size-4" />
                                     Perfil
                                 </a>
+
                                 <a href="{{ route('tenant.configuracoes.index') }}" wire:navigate class="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800">
                                     <x-ui.icon name="settings" class="size-4" />
                                     Configurações da Empresa
                                 </a>
                             </div>
+
                             <div class="py-1 border-t border-ink-100 dark:border-ink-800">
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
@@ -175,6 +241,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </header>
@@ -198,11 +265,13 @@
     </main>
 
     @livewireScripts
-    
+
     <script>
         document.addEventListener('livewire:navigated', () => {
-            // Re-inicializar componentes após navegação
+            // Espaço para reinit de plugins, máscaras, etc.
         });
     </script>
+
+    @stack('scripts')
 </body>
 </html>

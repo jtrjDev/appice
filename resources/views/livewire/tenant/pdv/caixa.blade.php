@@ -106,6 +106,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Itens</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Pagamento</th>
                             <th class="px-4 py-3 text-right text-xs font-medium text-ink-500 uppercase">Total</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-ink-500 uppercase">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-ink-700">
@@ -122,14 +123,28 @@
                                     {{ $pedido->itens->pluck('produto_nome')->join(', ') }}
                                 </td>
                                 <td class="px-4 py-3">
-                                    @foreach($pedido->pagamentos as $pag)
-                                        <span class="inline-block px-2 py-0.5 rounded text-xs bg-ink-100 dark:bg-ink-700 text-ink-600 dark:text-ink-300 capitalize">
-                                            {{ str_replace('_', ' ', $pag['forma']) }}
+                                   @foreach($pedido->pagamentos as $pag)
+                                        <span class="inline-block px-2 py-0.5 rounded text-xs bg-ink-100 dark:bg-ink-700 text-ink-600 dark:text-ink-300 capitalize mr-1 mb-1">
+                                            {{ str_replace('_', ' ', $pag['forma']) }} — R$ {{ number_format($pag['valor'], 2, ',', '.') }}
                                         </span>
                                     @endforeach
                                 </td>
                                 <td class="px-4 py-3 text-right font-semibold text-ink-900 dark:text-ink-50">
                                     R$ {{ number_format($pedido->total, 2, ',', '.') }}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <a wire:navigate href="{{ route('tenant.vendas.show', ['id' => $pedido->id]) }}"
+                                            class="px-3 py-1.5 border border-gray-300 dark:border-ink-600 rounded-lg text-xs font-medium hover:bg-ink-50 dark:hover:bg-ink-700">
+                                                Ver
+                                        </a>
+
+                                        <a href="{{ route('tenant.vendas.cupom', ['id' => $pedido->id]) }}"
+                                        target="_blank"
+                                        class="px-3 py-1.5 bg-ink-900 dark:bg-ink-100 text-white dark:text-ink-900 rounded-lg text-xs font-medium hover:bg-ink-800">
+                                            Cupom
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

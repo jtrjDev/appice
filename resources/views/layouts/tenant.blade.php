@@ -163,7 +163,11 @@
                         <x-ui.icon :name="$clientes['icon']" class="size-4" />
                         {{ $clientes['label'] }}
                     </a>
-
+                    @php $usuarios = $navLink('tenant.usuarios.*', 'Usuários', 'users'); @endphp
+                    <a href="{{ route('tenant.usuarios.index') }}" wire:navigate class="{{ $usuarios['class'] }}">
+                        <x-ui.icon :name="$usuarios['icon']" class="size-4" />
+                        {{ $usuarios['label'] }}
+                    </a>
                     @php $config = $navLink('tenant.configuracoes.*', 'Configurações', 'settings'); @endphp
                     <a href="{{ route('tenant.configuracoes.index') }}" wire:navigate class="{{ $config['class'] }}">
                         <x-ui.icon :name="$config['icon']" class="size-4" />

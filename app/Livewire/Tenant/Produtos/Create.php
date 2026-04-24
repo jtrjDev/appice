@@ -3,6 +3,7 @@
 namespace App\Livewire\Tenant\Produtos;
 
 use App\Models\Tenant\Produto;
+use App\Helpers\IconsHelper;
 use App\Models\Tenant\Categoria;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -18,6 +19,9 @@ class Create extends Component
     public $categoria_id = '';
     public $descricao = '';
     
+    // Adicione na classe
+    public $icone = '';
+
     // Preços
     public $preco = '';
     public $preco_promocional = '';
@@ -149,6 +153,7 @@ class Create extends Component
             'nome' => 'required|string|max:255',
             'categoria_id' => 'required|exists:categorias,id',
             'preco' => 'required|numeric|min:0',
+            'icone' => 'nullable|string|max:10',
         ]);
         
         // Preparar dados
@@ -176,6 +181,7 @@ class Create extends Component
             'aliq_pis' => $this->aliq_pis ?: null,
             'aliq_cofins' => $this->aliq_cofins ?: null,
             'unidade_medida' => $this->unidade_medida,
+            'icone' => $this->icone,
             'ativo' => $this->ativo,
             'destaque' => $this->destaque,
         ];
@@ -206,9 +212,11 @@ class Create extends Component
     public function render()
     {
         $categorias = Categoria::where('ativo', true)->orderBy('nome')->get();
-        
+        $icones = IconsHelper::getIcons();
+
         return view('livewire.tenant.produtos.create', [
             'categorias' => $categorias,
+            'icones' => $icones,
         ])->layout('layouts.tenant');
     }
 }

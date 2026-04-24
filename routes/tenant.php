@@ -22,6 +22,12 @@ use App\Http\Controllers\Tenant\VendaCupomController;
 use App\Livewire\Tenant\Notas\Index as NotasIndex;
 use App\Http\Controllers\Tenant\NotaFiscalController;
 use App\Livewire\Tenant\Notas\Show as NotasShow;
+use App\Livewire\Tenant\Usuarios\Index as UsuariosIndex;
+use App\Livewire\Tenant\Usuarios\Create as UsuariosCreate;
+use App\Livewire\Tenant\Usuarios\Edit as UsuariosEdit;
+use App\Http\Controllers\Tenant\CaixaController;
+use App\Livewire\Tenant\Caixa\Historico as CaixaHistorico;
+use App\Livewire\Tenant\Caixa\Relatorio as CaixaRelatorio;
 use Illuminate\Support\Facades\DB;
 
 Route::middleware(['web', 'auth:web', 'tenant.auth'])
@@ -56,6 +62,16 @@ Route::get('/notas/{nota}/xml', [NotaFiscalController::class, 'downloadXml'])->n
 Route::get('/notas/{nota}/pdf', [NotaFiscalController::class, 'downloadPdf'])->name('notas.download-pdf');
 Route::get('/notas/{nota}', NotasShow::class)->name('notas.show');
 
+
+//Rotas Usuarios
+Route::get('/usuarios', UsuariosIndex::class)->name('usuarios.index');
+Route::get('/usuarios/create', UsuariosCreate::class)->name('usuarios.create');
+Route::get('/usuarios/{usuario}/edit', UsuariosEdit::class)->name('usuarios.edit');
+
+// Adicione a rota Livewire:
+Route::get('/caixa/historico', CaixaHistorico::class)->name('caixa.historico');
+
+Route::get('/caixa/relatorio/{id}', [CaixaController::class, 'relatorio'])->name('caixa.relatorio');
 // dentro do grupo:
 Route::get('/mesas', PDVMesas::class)->name('mesas');
     });

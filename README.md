@@ -106,3 +106,6 @@ sudo mysql -u root
 
 # Ou com senha (se tiver definido)
 mysql -u root -p
+
+criar migration no tenant
+php artisan make:migration update_roles_in_tenant_users_table --path=database/migrations/tenant

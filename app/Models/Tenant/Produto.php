@@ -18,7 +18,7 @@ class Produto extends Model
         'tipo_venda', 'permite_meio', 'preco_meio', 'tamanhos', 'adicionais',
         'estoque', 'estoque_minimo',
         'ncm', 'cest', 'origem', 'aliq_icms', 'aliq_ipi', 'aliq_pis', 'aliq_cofins', 'unidade_medida',
-        'descricao', 'imagem', 'ativo', 'destaque'
+        'descricao', 'imagem', 'icon', 'ativo', 'destaque'
     ];
 
     protected $casts = [

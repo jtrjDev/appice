@@ -114,11 +114,16 @@
                 @forelse($produtos as $produto)
                 <button wire:click="adicionarProduto({{ $produto->id }})" wire:key="prod-{{ $produto->id }}"
                     class="bg-white dark:bg-ink-900 border border-gray-200 dark:border-ink-700 rounded-lg p-2.5 text-left hover:border-ink-400 hover:shadow-md transition-all active:scale-95">
-                    <div class="w-full h-14 bg-ink-100 dark:bg-ink-800 rounded flex items-center justify-center mb-2">
-                        <svg class="size-6 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7H4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1zM16 3H8l-1 4h10l-1-4z"/>
-                        </svg>
-                    </div>
+                    <div class="flex flex-col gap-1">
+    <div class="w-full h-20 bg-ink-100 dark:bg-ink-800 rounded flex items-center justify-center mb-1">
+        <span class="text-4xl">{{ $produto->icone ?? '📦' }}</span>
+    </div>
+    <p class="font-medium text-sm line-clamp-2 text-ink-800 dark:text-ink-100">{{ $produto->nome }}</p>
+    <p class="text-base font-bold text-primary-600">R$ {{ number_format($produto->preco_atual, 2, ',', '.') }}</p>
+    @if($produto->codigo)
+        <p class="text-xs text-ink-400 font-mono">{{ $produto->codigo }}</p>
+    @endif
+</div>
                     <p class="font-medium text-xs line-clamp-2 text-ink-800 dark:text-ink-100 leading-tight mb-1">{{ $produto->nome }}</p>
                     <p class="text-sm font-bold text-primary-600">R$ {{ number_format($produto->preco_atual, 2, ',', '.') }}</p>
                     @if($produto->codigo)

@@ -86,11 +86,12 @@
                         {{ $plan['label'] }}
                     </a>
 
-                    @php $usr = $navLink('admin.users.*', 'Usuários', 'users', true); @endphp
-                    <a href="#" class="{{ $usr['class'] }}">
+                    @php $usr = $navLink('admin.usuarios.*', 'Usuários', 'users', false); @endphp
+                    <a href="{{ route('admin.usuarios.index') }}" wire:navigate class="{{ $usr['class'] }}">
                         <x-ui.icon :name="$usr['icon']" class="size-4" />
                         {{ $usr['label'] }}
                     </a>
+
                 </nav>
 
                 {{-- Espaço flexível --}}

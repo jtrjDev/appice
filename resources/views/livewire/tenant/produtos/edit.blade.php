@@ -77,6 +77,29 @@
                         <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Descrição</label>
                         <textarea wire:model="descricao" rows="3" class="w-full px-3 py-2 border rounded-lg" placeholder="Descrição detalhada do produto..."></textarea>
                     </div>
+                    {{-- Seleção de Ícone --}}
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-2">Ícone do Produto</label>
+                        <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2 p-3 bg-ink-50 dark:bg-ink-800 rounded-lg">
+                            @foreach($icones as $icone => $nome)
+                                <button type="button" 
+                                    wire:click="$set('icone', '{{ $icone }}')"
+                                    class="text-2xl p-2 rounded-lg transition-all hover:scale-110 {{ $this->icone == $icone ? 'bg-ink-200 dark:bg-ink-700 ring-2 ring-ink-500' : 'hover:bg-ink-100 dark:hover:bg-ink-700' }}"
+                                    title="{{ $nome }}">
+                                    {{ $icone }}
+                                </button>
+                            @endforeach
+                        </div>
+                        @if($icone)
+                            <div class="mt-2 flex items-center gap-2">
+                                <span class="text-sm text-ink-500">Ícone selecionado:</span>
+                                <span class="text-2xl">{{ $icone }}</span>
+                                <span class="text-xs text-ink-400">{{ $icones[$icone] ?? '' }}</span>
+                            </div>
+                        @else
+                            <p class="text-xs text-ink-500 mt-1">Selecione um ícone para o produto</p>
+                        @endif
+                    </div>
                     
                     <div class="flex items-center gap-4">
                         <label class="flex items-center gap-2">

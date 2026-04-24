@@ -1,44 +1,35 @@
 <div>
     <div class="mb-8 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-semibold text-ink-900 dark:text-ink-50">Produtos</h1>
+            <h1 class="text-2xl font-semibold text-ink-900 dark:text-ink-50">Usuários do Sistema</h1>
             <p class="mt-1 text-sm text-ink-500 dark:text-ink-400">
-                Gerencie seus produtos
+                Gerencie todos os usuários da plataforma
             </p>
         </div>
-        <a href="{{ route('tenant.produtos.create') }}" 
+        <a href="{{ route('admin.usuarios.create') }}" 
            wire:navigate
            class="inline-flex items-center gap-2 px-4 py-2 bg-ink-900 text-white rounded-lg hover:bg-ink-800 transition-colors">
             <x-ui.icon name="plus" class="size-4" />
-            Novo Produto
+            Novo Usuário
         </a>
     </div>
 
     {{-- Filtros --}}
-    <div class="mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div class="md:col-span-2">
+    <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
             <input type="text" 
                    wire:model.live.debounce.300ms="search" 
-                   placeholder="Buscar por nome, código ou NCM..."
+                   placeholder="Buscar por nome ou e-mail..."
                    class="w-full px-3 py-2 border border-ink-300 dark:border-ink-700 rounded-lg bg-white dark:bg-ink-800 text-ink-900 dark:text-ink-100 focus:ring-2 focus:ring-ink-500">
         </div>
         <div>
-            <select wire:model.live="categoriaFilter" 
+            <select wire:model.live="filterTenant" 
                     class="w-full px-3 py-2 border border-ink-300 dark:border-ink-700 rounded-lg bg-white dark:bg-ink-800 text-ink-900 dark:text-ink-100">
-                <option value="">Todas categorias</option>
-                @foreach($categorias as $categoria)
-                    <option value="{{ $categoria->id }}">{{ $categoria->nome }}</option>
+                <option value="">Todos os tenants</option>
+                <option value="super">Super Admin (Sistema)</option>
+                @foreach($tenants as $tenant)
+                    <option value="{{ $tenant->id }}">{{ $tenant->name }}</option>
                 @endforeach
-            </select>
-        </div>
-        <div>
-            <select wire:model.live="statusFilter" 
-                    class="w-full px-3 py-2 border border-ink-300 dark:border-ink-700 rounded-lg bg-white dark:bg-ink-800 text-ink-900 dark:text-ink-100">
-                <option value="">Todos status</option>
-                <option value="ativo">Ativos</option>
-                <option value="inativo">Inativos</option>
-                <option value="destaque">Destaques</option>
-                <option value="estoque_baixo">Estoque Baixo</option>
             </select>
         </div>
         <div>
@@ -58,77 +49,69 @@
             <table class="w-full">
                 <thead class="bg-ink-50 dark:bg-ink-800 border-b border-ink-200 dark:border-ink-700">
                     <tr>
-                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Imagem</th>
-                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Código</th>
-                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Produto</th>
-                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Categoria</th>
-                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Preço</th>
-                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Estoque</th>
+                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Nome</th>
+                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">E-mail</th>
+                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Tenant</th>
+                        <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Tipo</th>
                         <th class="text-left px-6 py-3 text-xs font-medium text-ink-500 uppercase">Status</th>
                         <th class="text-right px-6 py-3 text-xs font-medium text-ink-500 uppercase">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-ink-200 dark:divide-ink-800">
-                    @forelse($produtos as $produto)
+                    @forelse($usuarios as $usuario)
                         <tr class="hover:bg-ink-50 dark:hover:bg-ink-800/50 transition-colors">
-                            <td class="px-6 py-4">
-                                <div class="text-3xl">
-                                    {!! $produto->icone ?? '📦' !!}
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-sm font-mono text-ink-600 dark:text-ink-300">
-                                {{ $produto->codigo ?? '-' }}
-                            </td>
-                            <td class="px-6 py-4">
-                                <p class="text-sm font-medium text-ink-900 dark:text-ink-100">{{ $produto->nome }}</p>
-                                @if($produto->destaque)
-                                    <span class="text-xs text-yellow-600">⭐ Destaque</span>
-                                @endif
+                            <td class="px-6 py-4 text-sm font-medium text-ink-900 dark:text-ink-100">
+                                {{ $usuario->name }}
                             </td>
                             <td class="px-6 py-4 text-sm text-ink-600 dark:text-ink-300">
-                                {{ $produto->categoria->nome ?? '-' }}
+                                {{ $usuario->email }}
                             </td>
                             <td class="px-6 py-4">
-                                <p class="text-sm font-semibold text-ink-900 dark:text-ink-100">
-                                    {{ $produto->preco_atual_formatado }}
-                                </p>
-                                @if($produto->preco_promocional)
-                                    <p class="text-xs text-ink-500 line-through">{{ $produto->preco_formatado }}</p>
+                                @if($usuario->tenant_id)
+                                    @php $tenant = $tenants->firstWhere('id', $usuario->tenant_id) @endphp
+                                    <span class="text-sm text-ink-600">{{ $tenant->name ?? $usuario->tenant_id }}</span>
+                                @else
+                                    <span class="inline-flex px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                        Sistema
+                                    </span>
                                 @endif
                             </td>
                             <td class="px-6 py-4">
-                                <span class="text-sm {{ $produto->estoque <= $produto->estoque_minimo ? 'text-red-600 font-semibold' : 'text-ink-600' }}">
-                                    {{ $produto->estoque }} {{ $produto->unidade_medida }}
-                                </span>
+                                @if($usuario->is_super_admin)
+                                    <span class="inline-flex px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                        Super Admin
+                                    </span>
+                                @else
+                                    <span class="inline-flex px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                        Admin Tenant
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
-                                <div class="flex items-center gap-2">
-                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {{ $produto->ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700' }}">
-                                        {{ $produto->ativo ? 'Ativo' : 'Inativo' }}
-                                    </span>
-                                </div>
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {{ $usuario->is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700' }}">
+                                    {{ $usuario->is_active ? 'Ativo' : 'Inativo' }}
+                                </span>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('tenant.produtos.edit', $produto) }}" 
+                                    <a href="{{ route('admin.usuarios.edit', $usuario) }}" 
                                        wire:navigate
                                        class="text-ink-500 hover:text-ink-700">
                                         <x-ui.icon name="edit" class="size-4" />
                                     </a>
-                                    <button wire:click="confirmDelete({{ $produto->id }})"
+                                    @if($usuario->id != auth()->id())
+                                    <button wire:click="confirmDelete({{ $usuario->id }})"
                                             class="text-danger-500 hover:text-danger-700">
                                         <x-ui.icon name="trash" class="size-4" />
                                     </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center text-ink-500">
-                                Nenhum produto encontrado.
-                                <a href="{{ route('tenant.produtos.create') }}" wire:navigate class="text-ink-900 underline ml-1">
-                                    Criar primeiro produto
-                                </a>
+                            <td colspan="6" class="px-6 py-12 text-center text-ink-500">
+                                Nenhum usuário encontrado.
                             </td>
                         </tr>
                     @endforelse
@@ -136,11 +119,11 @@
             </table>
         </div>
         <div class="px-6 py-4 border-t border-ink-200 dark:border-ink-800">
-            {{ $produtos->links() }}
+            {{ $usuarios->links() }}
         </div>
     </div>
 
-    {{-- Modal de confirmação de exclusão --}}
+    {{-- Modal de confirmação --}}
     @if($confirmingDelete)
         <div class="fixed inset-0 z-50 overflow-y-auto">
             <div class="flex items-center justify-center min-h-screen p-4">
@@ -148,7 +131,7 @@
                 <div class="relative bg-white dark:bg-ink-900 rounded-lg max-w-md w-full p-6">
                     <h3 class="text-lg font-medium text-ink-900 dark:text-ink-50 mb-4">Confirmar exclusão</h3>
                     <p class="text-sm text-ink-500 dark:text-ink-400 mb-6">
-                        Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.
+                        Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
                     </p>
                     <div class="flex justify-end gap-3">
                         <button wire:click="$set('confirmingDelete', false)"

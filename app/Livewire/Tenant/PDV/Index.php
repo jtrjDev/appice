@@ -8,6 +8,7 @@ use App\Models\Tenant\Cliente;
 use App\Models\Tenant\Caixa;
 use App\Models\Tenant\Pedido;
 use App\Models\Tenant\Comanda;
+use App\Models\Tenant\Configuracao;
 use App\Models\Tenant\ComandaItem;
 use App\Models\Tenant\ComandaPagamento;
 use App\Models\Tenant\PedidoItem;

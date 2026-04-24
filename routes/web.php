@@ -5,6 +5,9 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Livewire\Admin\Tenants\Index as TenantsIndex;
 use App\Livewire\Admin\Tenants\Create as TenantsCreate;
 use App\Livewire\Admin\Tenants\Edit as TenantsEdit;
+use App\Livewire\Admin\Usuarios\Index as UsuariosIndex;
+use App\Livewire\Admin\Usuarios\Create as UsuariosCreate;
+use App\Livewire\Admin\Usuarios\Edit as UsuariosEdit;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -52,6 +55,11 @@ Route::middleware(['auth:web', 'superadmin'])
         Route::get('/tenants/create', TenantsCreate::class)->name('tenants.create');
         Route::get('/tenants/{tenant}/edit', TenantsEdit::class)->name('tenants.edit');
         
+        // Usuários - ADICIONE ESTAS ROTAS
+        Route::get('/usuarios', UsuariosIndex::class)->name('usuarios.index');
+        Route::get('/usuarios/create', UsuariosCreate::class)->name('usuarios.create');
+        Route::get('/usuarios/{usuario}/edit', UsuariosEdit::class)->name('usuarios.edit');
+
         // Futuras rotas de Plans e Users
         // Route::get('/plans', PlansIndex::class)->name('plans.index');
         // Route::get('/users', UsersIndex::class)->name('users.index');

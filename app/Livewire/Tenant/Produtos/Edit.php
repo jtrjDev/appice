@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Produtos;
 
 use App\Models\Tenant\Produto;
 use App\Models\Tenant\Categoria;
+use App\Helpers\IconsHelper;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,8 @@ class Edit extends Component
     public $categoria_id = '';
     public $descricao = '';
     
+    public $icone = '';
+
     // Preços
     public $preco = '';
     public $preco_promocional = '';
@@ -125,6 +128,7 @@ class Edit extends Component
         $this->aliq_cofins = $produto->aliq_cofins;
         $this->unidade_medida = $produto->unidade_medida;
         $this->imagemAtual = $produto->imagem;
+        $this->icone = $produto->icone; // Carrega o ícone
         $this->ativo = $produto->ativo;
         $this->destaque = $produto->destaque;
     }
@@ -197,6 +201,7 @@ class Edit extends Component
         $produto->origem = $this->origem ?: '0';
         $produto->estoque_minimo = $this->estoque_minimo ?? 0;
         
+        $produto->icone = $this->icone;
         // Campos opcionais (podem ser null)
         $produto->preco_custo = $this->preco_custo ?: null;
         $produto->preco_meio = $this->preco_meio ?: null;
@@ -233,9 +238,11 @@ class Edit extends Component
     public function render()
     {
         $categorias = Categoria::where('ativo', true)->orderBy('nome')->get();
-        
+        $icones = IconsHelper::getIcons();
+
         return view('livewire.tenant.produtos.edit', [
             'categorias' => $categorias,
+            'icones' => $icones,
         ])->layout('layouts.tenant');
     }
 }

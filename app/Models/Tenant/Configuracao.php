@@ -18,7 +18,7 @@ class Configuracao extends Model
         'certificado_path', 'certificado_senha', 'certificado_validade',
         'cabecalho_cupom', 'rodape_cupom', 'exibir_logo_cupom', 'tema_cupom',
         'regime_tributario', 'codigo_atividade', 'codigo_municipio', 'codigo_pais',
-        'webhook_nfe', 'webhook_nfse'
+        'webhook_nfe', 'emitir_nf_automatico', 'webhook_nfse'
     ];
 
     protected $casts = [

@@ -232,15 +232,14 @@ class Index extends Component
     public function buscarPorCodigo(): void
     {
         $codigo = trim($this->codigoProduto);
-
         if (strlen($codigo) < 1) {
             return;
-        }
-
-        $produto = Produto::where('codigo', $codigo)
-            ->orWhere('id', $codigo)
+            }
+            
+            $produto = Produto::where('codigo', $codigo)
             ->first();
-
+            
+            
         if ($produto) {
             $this->adicionarProduto($produto->id, $this->quantidadeInput);
             $this->codigoProduto = '';

@@ -1,6 +1,5 @@
 <div x-data="{}"
-    x-on:pdv-sucesso.window="alert($event.detail.mensagem)"
-    x-on:pdv-aviso.window="alert($event.detail.mensagem)">
+    x-on:toast.window="$data.addToast($event.detail.type, $event.detail.message)">
 
     {{-- MODAL PARA CPF/CNPJ --}}
     @if($mostrarModalNF)
@@ -45,7 +44,7 @@
     <div class="mb-6 flex justify-between items-center">
         <div>
             <h1 class="text-2xl font-semibold text-ink-900 dark:text-ink-50">Histórico de Vendas</h1>
-            <p class="text-sm text-ink-500 dark:text-ink-400">Consulte vendas e reimprima cupons</p>
+            <p class="text-sm text-ink-500 dark:text-ink-400">Consulte vendas, reimprima cupons e acompanhe notas fiscais</p>
         </div>
 
         <a href="{{ route('tenant.pdv') }}"
@@ -127,6 +126,16 @@
                     <option value="cancelado">Cancelado</option>
                 </select>
             </div>
+
+            <div>
+                <label class="block text-xs text-ink-500 mb-1">Nota Fiscal</label>
+                <select wire:model.live="statusNF"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-ink-600 rounded-lg text-sm dark:bg-ink-800 dark:text-ink-100">
+                    <option value="">Todas</option>
+                    <option value="emitida">Com nota emitida</option>
+                    <option value="pendente">Sem nota</option>
+                </select>
+            </div>
         </div>
 
         <div class="mt-4 flex justify-end">
@@ -149,12 +158,19 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Cliente</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Pagamentos</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-ink-500 uppercase">Total</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-ink-500 uppercase">Nota Fiscal</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-ink-500 uppercase">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-ink-700">
                     @forelse($this->pedidos as $pedido)
-                        <tr class="hover:bg-ink-50 dark:hover:bg-ink-800">
+                        @php
+                            $notaFiscal = \App\Models\Tenant\NotaFiscal::where('pedido_id', $pedido->id)->first();
+                            $temNota = $notaFiscal && $notaFiscal->status === 'autorizada';
+                            $notaProcessando = $notaFiscal && $notaFiscal->status === 'processando';
+                            $notaErro = $notaFiscal && $notaFiscal->status === 'erro';
+                        @endphp
+                        <tr class="hover:bg-ink-50 dark:hover:bg-ink-800 transition-colors">
                             <td class="px-4 py-3">
                                 <div class="font-semibold text-ink-900 dark:text-ink-50">
                                     #{{ $pedido->numero_pedido }}
@@ -162,20 +178,20 @@
                                 <div class="text-xs text-ink-400">
                                     Caixa #{{ $pedido->caixa_id }}
                                 </div>
-                            </td>
+                             </td>
                             <td class="px-4 py-3 text-ink-600 dark:text-ink-300">
                                 <div>{{ $pedido->created_at->format('d/m/Y') }}</div>
                                 <div class="text-xs text-ink-400">{{ $pedido->created_at->format('H:i') }}</div>
-                            </td>
+                             </td>
                             <td class="px-4 py-3 text-ink-600 dark:text-ink-300">
                                 <div class="capitalize">{{ $pedido->tipo }}</div>
                                 <div class="text-xs text-ink-400">
                                     {{ $pedido->mesa ? 'Mesa ' . $pedido->mesa : 'Sem mesa' }}
                                 </div>
-                            </td>
+                             </td>
                             <td class="px-4 py-3 text-ink-600 dark:text-ink-300">
                                 {{ $pedido->cliente->nome ?? 'Consumidor' }}
-                            </td>
+                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex flex-wrap gap-1">
                                     @foreach(($pedido->pagamentos ?? []) as $pag)
@@ -185,18 +201,64 @@
                                         </span>
                                     @endforeach
                                 </div>
-                            </td>
+                             </td>
                             <td class="px-4 py-3 text-right font-semibold text-ink-900 dark:text-ink-50">
                                 R$ {{ number_format($pedido->total, 2, ',', '.') }}
-                            </td>
+                             </td>
+                            <td class="px-4 py-3 text-center">
+                                @if($temNota)
+                                    <div class="flex items-center justify-center gap-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+                                            <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Emitida
+                                        </span>
+                                        @if($notaFiscal->numero_nota)
+                                            <button onclick="copiarChave('{{ $notaFiscal->chave_acesso }}')" 
+                                                class="text-xs text-blue-500 hover:text-blue-700" title="Copiar chave">
+                                                📋
+                                            </button>
+                                        @endif
+                                    </div>
+                                @elseif($notaProcessando)
+                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-700">
+                                        <svg class="size-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Processando
+                                    </span>
+                                @elseif($notaErro)
+                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700">
+                                        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Erro
+                                    </span>
+                                @else
+                                    <span class="inline-flex px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                                        Pendente
+                                    </span>
+                                @endif
+                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-2">
+                                    @if(!$temNota && !$notaProcessando)
                                     <button wire:click="abrirModalNF({{ $pedido->id }})"
                                         class="text-green-500 hover:text-green-700" title="Emitir Nota Fiscal">
                                         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                     </button>
+                                    @endif
+                                    @if($temNota && $notaFiscal->link_pdf)
+                                    <a href="{{ $notaFiscal->link_pdf }}" target="_blank"
+                                        class="text-red-500 hover:text-red-700" title="Baixar DANFE">
+                                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                    </a>
+                                    @endif
                                     <button wire:click="verVenda({{ $pedido->id }})"
                                         class="px-3 py-1.5 border border-gray-300 dark:border-ink-600 rounded-lg text-xs font-medium hover:bg-ink-50 dark:hover:bg-ink-700">
                                         Ver
@@ -205,30 +267,33 @@
                                         class="px-3 py-1.5 bg-ink-900 dark:bg-ink-100 text-white dark:text-ink-900 rounded-lg text-xs font-medium hover:bg-ink-800">
                                         Cupom
                                     </button>
-                                    <a href="{{ route('tenant.vendas.show', $pedido) }}" wire:navigate
-                                        class="text-ink-500 hover:text-ink-700">
-                                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </a>
                                 </div>
-                            </td>
-                        </tr>
+                             </td>
+                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-10 text-center text-ink-400">
+                            <td colspan="8" class="px-4 py-10 text-center text-ink-400">
                                 Nenhuma venda encontrada
-                            </td>
+                             </td>
                         </tr>
                     @endforelse
                 </tbody>
-            </table>
+             </table>
         </div>
         <div class="p-4 border-t border-gray-200 dark:border-ink-700">
             {{ $this->pedidos->links() }}
         </div>
     </div>
+
+    {{-- Script para copiar chave --}}
+    <script>
+        function copiarChave(chave) {
+            navigator.clipboard.writeText(chave);
+            window.dispatchEvent(new CustomEvent('toast', { 
+                detail: { type: 'success', message: 'Chave da nota copiada!' } 
+            }));
+        }
+    </script>
 
     {{-- MODAL CUPOM --}}
     @if($mostrarCupom && $pedidoCupom)

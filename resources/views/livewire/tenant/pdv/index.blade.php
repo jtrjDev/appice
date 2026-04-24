@@ -1,8 +1,5 @@
-<div
-    x-data="{}"
-    x-on:pdv-sucesso.window="alert($event.detail.mensagem)"
-    x-on:pdv-aviso.window="alert($event.detail.mensagem)"
->
+<div x-data="{}"
+    x-on:toast.window="console.log($event.detail)">
     {{-- Cabeçalho --}}
     <div class="mb-3 flex justify-between items-center">
         <div>

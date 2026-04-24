@@ -14,14 +14,14 @@ use App\Models\Tenant\ComandaPagamento;
 use App\Models\Tenant\PedidoItem;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
-use Livewire\Attributes\Url;//para receber a mesa
+use Livewire\Attributes\Url;
+use App\Livewire\Traits\WithToast;
 use Livewire\Attributes\Computed;
 use App\Jobs\EmitirNotaFiscal;
-use Tenancy\Facades\Tenancy;
-
 
 class Index extends Component
 {
+    use WithToast;
 
     // Propriedades para o modal de NF
     public $mostrarModalNF = false;
@@ -34,7 +34,6 @@ class Index extends Component
         'cpfCnpjNF' => 'required|string|min:11|max:18',
         'nomeClienteNF' => 'required|string|min:3',
     ];
-
 
     // Filtros
     public ?int $categoriaSelecionada = null;
@@ -72,10 +71,9 @@ class Index extends Component
         $this->valorPendente = 0;
         $this->valorPagamento = 0;
         $this->formaPagamento = 'dinheiro';
-        $this->mostrarModalNF = false; // Inicializa modal
-   
+        $this->mostrarModalNF = false;
+
         if ($this->mesa) {
-           
             $this->updatedMesa();
         }
 
@@ -131,7 +129,7 @@ class Index extends Component
         $quantidade = $quantidade ?? $this->quantidadeInput;
 
         if (! $produto) {
-            $this->dispatch('pdv-aviso', mensagem: 'Produto não encontrado.');
+            $this->toastError('Produto não encontrado!');
             return;
         }
 
@@ -159,6 +157,7 @@ class Index extends Component
         $this->salvarCarrinho();
         $this->quantidadeInput = 1;
         $this->recalcularPendente();
+        $this->toastSuccess("Produto {$produto->nome} adicionado!");
     }
 
     public function removerProduto(int $produtoId): void
@@ -202,6 +201,7 @@ class Index extends Component
         $this->valorPagamento = 0;
 
         session()->forget('pdv_carrinho');
+        $this->toastInfo('Carrinho limpo!');
     }
 
     private function salvarCarrinho(): void
@@ -212,7 +212,7 @@ class Index extends Component
     public function abrirPagamento(): void
     {
         if (empty($this->carrinho)) {
-            $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
+            $this->toastWarning('Carrinho vazio! Adicione produtos primeiro.');
             return;
         }
 
@@ -247,7 +247,7 @@ class Index extends Component
             $this->quantidadeInput = 1;
             $this->dispatch('focar-codigo');
         } else {
-            $this->dispatch('pdv-aviso', mensagem: 'Produto não encontrado: ' . $codigo);
+            $this->toastWarning("Produto não encontrado: {$codigo}");
         }
     }
 
@@ -275,7 +275,7 @@ class Index extends Component
     public function adicionarPagamento(): void
     {
         if (empty($this->carrinho)) {
-            $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
+            $this->toastWarning('Insira ao menos um item no carrinho!');
             return;
         }
 
@@ -292,7 +292,7 @@ class Index extends Component
         $valor = round((float) $this->valorPagamento, 2);
 
         if ($valor <= 0) {
-            $this->dispatch('pdv-aviso', mensagem: 'Informe um valor para pagamento.');
+            $this->toastWarning('Informe um valor para pagamento!');
             return;
         }
 
@@ -303,7 +303,7 @@ class Index extends Component
         }
 
         if ($this->valorPendente <= 0) {
-            $this->dispatch('pdv-aviso', mensagem: 'A venda já está totalmente paga. Clique em Finalizar Venda.');
+            $this->toastInfo('Valores inseridos, agora finalize a venda.');
             return;
         }
 
@@ -325,15 +325,9 @@ class Index extends Component
         $this->recalcularPendente();
 
         if ($this->valorPendente > 0) {
-            $this->dispatch(
-                'pdv-sucesso',
-                mensagem: 'Pagamento adicionado! Restante: R$ ' . number_format($this->valorPendente, 2, ',', '.')
-            );
+            $this->toastSuccess("Pagamento adicionado! Restante: R$ " . number_format($this->valorPendente, 2, ',', '.'));
         } else {
-            $this->dispatch(
-                'pdv-sucesso',
-                mensagem: 'Pagamento completo! Agora clique em Finalizar Venda.'
-            );
+            $this->toastSuccess('Pagamento completo! Agora clique em Finalizar Venda.');
         }
     }
 
@@ -345,151 +339,147 @@ class Index extends Component
 
         array_splice($this->pagamentos, $index, 1);
         $this->recalcularPendente();
+        $this->toastInfo('Pagamento removido.');
     }
 
     public function finalizarVenda(): void
-{
-    if (empty($this->carrinho)) {
-        $this->dispatch('pdv-aviso', mensagem: 'Carrinho vazio!');
-        return;
-    }
+    {
+        if (empty($this->carrinho)) {
+            $this->toastWarning('Carrinho vazio!');
+            return;
+        }
 
-    $this->recalcularPendente(false);
+        $this->recalcularPendente(false);
 
-    if (!$this->modoComanda && $this->valorPendente > 0) {
-        $this->dispatch(
-            'pdv-aviso',
-            mensagem: 'Ainda falta R$ ' . number_format($this->valorPendente, 2, ',', '.') . ' para concluir a venda.'
-        );
-        return;
-    }
+        if (!$this->modoComanda && $this->valorPendente > 0) {
+            $this->toastWarning('Ainda falta R$ ' . number_format($this->valorPendente, 2, ',', '.') . ' para concluir a venda.');
+            return;
+        }
 
-    $caixa = Caixa::caixaAberto();
+        $caixa = Caixa::caixaAberto();
 
-    if (! $caixa) {
-        $this->dispatch('pdv-aviso', mensagem: 'Nenhum caixa aberto! Abra o caixa antes de vender.');
-        $this->mostrarPagamento = false;
-        return;
-    }
+        if (! $caixa) {
+            $this->toastError('Nenhum caixa aberto! Abra o caixa antes de vender.');
+            $this->mostrarPagamento = false;
+            return;
+        }
 
-    DB::beginTransaction();
+        DB::beginTransaction();
 
-    try {
-        $subtotal = $this->totalCarrinho;
+        try {
+            $subtotal = $this->totalCarrinho;
 
-        $pedido = Pedido::create([
-            'caixa_id'      => $caixa->id,
-            'numero_pedido' => Pedido::gerarNumero(),
-            'cliente_id'    => $this->clienteId ?: null,
-            'tipo'          => 'balcao',
-            'mesa'          => $this->mesa ?: null,
-            'subtotal'      => $subtotal,
-            'taxa_entrega'  => 0,
-            'desconto'      => 0,
-            'total'         => $subtotal,
-            'status'        => 'entregue',
-            'pagamentos'    => $this->pagamentos,
-            'atendente_id'  => $this->tenantUserId ?? 1,
-        ]);
-
-        foreach ($this->carrinho as $item) {
-            PedidoItem::create([
-                'pedido_id'      => $pedido->id,
-                'produto_id'     => $item['id'],
-                'produto_nome'   => $item['nome'],
-                'quantidade'     => $item['quantidade'],
-                'preco_unitario' => $item['preco'],
-                'subtotal'       => $item['subtotal'],
+            $pedido = Pedido::create([
+                'caixa_id'      => $caixa->id,
+                'numero_pedido' => Pedido::gerarNumero(),
+                'cliente_id'    => $this->clienteId ?: null,
+                'tipo'          => 'balcao',
+                'mesa'          => $this->mesa ?: null,
+                'subtotal'      => $subtotal,
+                'taxa_entrega'  => 0,
+                'desconto'      => 0,
+                'total'         => $subtotal,
+                'status'        => 'entregue',
+                'pagamentos'    => $this->pagamentos,
+                'atendente_id'  => $this->tenantUserId ?? 1,
             ]);
+
+            foreach ($this->carrinho as $item) {
+                PedidoItem::create([
+                    'pedido_id'      => $pedido->id,
+                    'produto_id'     => $item['id'],
+                    'produto_nome'   => $item['nome'],
+                    'quantidade'     => $item['quantidade'],
+                    'preco_unitario' => $item['preco'],
+                    'subtotal'       => $item['subtotal'],
+                ]);
+            }
+
+            $totaisPagamentos = collect($this->pagamentos)
+                ->groupBy('forma')
+                ->map(fn($grupo) => $grupo->sum('valor'));
+
+            $caixa->increment('total_vendas', $subtotal);
+            $caixa->increment('quantidade_vendas');
+            $caixa->increment('total_dinheiro', $totaisPagamentos->get('dinheiro', 0));
+            $caixa->increment('total_credito', $totaisPagamentos->get('cartao_credito', 0));
+            $caixa->increment('total_debito', $totaisPagamentos->get('cartao_debito', 0));
+            $caixa->increment('total_pix', $totaisPagamentos->get('pix', 0));
+            
+            DB::commit();
+
+            // Limpar carrinho e modal de pagamento
+            $this->mostrarPagamento = false;
+            $this->limparCarrinho();
+            $this->mesa = '';
+            $this->comanda = '';
+            $this->observacao = '';
+            $this->modoComanda = false;
+            $this->comandaId = null;
+            $this->formaPagamento = 'dinheiro';
+
+            // Verifica se deve perguntar sobre emitir nota fiscal
+            $config = Configuracao::first();
+            
+            // Se já tem cliente com CPF/CNPJ, emite automaticamente
+            if ($pedido->cliente_id && $pedido->cliente && $pedido->cliente->cpf_cnpj) {
+                EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
+                $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado! NF solicitada.");
+            } 
+            // Se não tem cliente ou não tem CPF, pergunta se quer emitir
+            elseif ($config && $config->emitir_nf_automatico) {
+                $this->pedidoTempId = $pedido->id;
+                $this->mostrarModalNF = true;
+                $this->toastInfo("Deseja emitir nota fiscal? Preencha os dados.");
+            } 
+            // Não emite nota
+            else {
+                $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado!");
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->toastError('Erro ao finalizar venda: ' . $e->getMessage());
         }
-
-        $totaisPagamentos = collect($this->pagamentos)
-            ->groupBy('forma')
-            ->map(fn($grupo) => $grupo->sum('valor'));
-
-        $caixa->increment('total_vendas', $subtotal);
-        $caixa->increment('quantidade_vendas');
-        $caixa->increment('total_dinheiro', $totaisPagamentos->get('dinheiro', 0));
-        $caixa->increment('total_credito', $totaisPagamentos->get('cartao_credito', 0));
-        $caixa->increment('total_debito', $totaisPagamentos->get('cartao_debito', 0));
-        $caixa->increment('total_pix', $totaisPagamentos->get('pix', 0));
-        
-        DB::commit();
-
-        // Limpar carrinho e modal de pagamento
-        $this->mostrarPagamento = false;
-        $this->limparCarrinho();
-        $this->mesa = '';
-        $this->comanda = '';
-        $this->observacao = '';
-        $this->modoComanda = false;
-        $this->comandaId = null;
-        $this->formaPagamento = 'dinheiro';
-
-        // Verifica se deve perguntar sobre emitir nota fiscal
-        $config = Configuracao::first();
-        
-        // Se já tem cliente com CPF/CNPJ, emite automaticamente
-        if ($pedido->cliente_id && $pedido->cliente && $pedido->cliente->cpf_cnpj) {
-            EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
-            $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado! NF solicitada.");
-        } 
-        // Se não tem cliente ou não tem CPF, pergunta se quer emitir
-        elseif ($config && $config->emitir_nf_automatico) {
-            // Salva o pedido temporariamente e abre modal
-            $this->pedidoTempId = $pedido->id;
-            $this->mostrarModalNF = true;
-            $this->dispatch('pdv-info', mensagem: "Deseja emitir nota fiscal? Preencha os dados.");
-        } 
-        // Não emite nota
-        else {
-            $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado!");
-        }
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        $this->dispatch('pdv-aviso', mensagem: 'Erro ao finalizar venda: ' . $e->getMessage());
     }
-}
 
-// Adicione este método para emitir nota após o modal
-public function emitirNotaDaVenda()
-{
-    $this->validate([
-        'cpfCnpjNF' => 'required|string|min:11|max:18',
-        'nomeClienteNF' => 'required|string|min:3',
-    ]);
-    
-    $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF);
-    
-    // Criar ou buscar cliente
-    $cliente = Cliente::updateOrCreate(
-        ['cpf_cnpj' => $cpfCnpj],
-        ['nome' => $this->nomeClienteNF, 'ativo' => true]
-    );
-    
-    // Associar ao pedido
-    $pedido = Pedido::find($this->pedidoTempId);
-    $pedido->cliente_id = $cliente->id;
-    $pedido->save();
-    
-    // Disparar emissão da NF
-    EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
-    
-    $this->mostrarModalNF = false;
-    $this->pedidoTempId = null;
-    $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
-    
-    $this->dispatch('pdv-sucesso', mensagem: "Pedido #{$pedido->numero_pedido} finalizado com NF solicitada!");
-}
+    public function emitirNotaDaVenda()
+    {
+        $this->validate([
+            'cpfCnpjNF' => 'required|string|min:11|max:18',
+            'nomeClienteNF' => 'required|string|min:3',
+        ]);
+        
+        $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF);
+        
+        // Criar ou buscar cliente
+        $cliente = Cliente::updateOrCreate(
+            ['cpf_cnpj' => $cpfCnpj],
+            ['nome' => $this->nomeClienteNF, 'ativo' => true]
+        );
+        
+        // Associar ao pedido
+        $pedido = Pedido::find($this->pedidoTempId);
+        $pedido->cliente_id = $cliente->id;
+        $pedido->save();
+        
+        // Disparar emissão da NF
+        EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
+        
+        $this->mostrarModalNF = false;
+        $this->pedidoTempId = null;
+        $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
+        
+        $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado com NF solicitada!");
+    }
 
-public function finalizarSemNF()
-{
-    $this->mostrarModalNF = false;
-    $this->pedidoTempId = null;
-    $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
-    $this->dispatch('pdv-sucesso', mensagem: "Pedido finalizado sem nota fiscal!");
-}
+    public function finalizarSemNF()
+    {
+        $this->mostrarModalNF = false;
+        $this->pedidoTempId = null;
+        $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
+        $this->toastSuccess("Pedido finalizado sem nota fiscal!");
+    }
 
     public function updatedMesa(): void
     {
@@ -527,7 +517,7 @@ public function finalizarSemNF()
 
             $this->salvarCarrinho();
             $this->recalcularPendente();
-            $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $mesa . ' carregada!');
+            $this->toastSuccess("Mesa {$mesa} carregada com sucesso!");
         } else {
             $this->modoComanda = true;
             $this->comandaId = null;
@@ -535,12 +525,14 @@ public function finalizarSemNF()
             $this->pagamentos = [];
             $this->salvarCarrinho();
             $this->recalcularPendente();
+            $this->toastInfo("Nova mesa {$mesa} criada. Adicione os itens.");
         }
     }
 
     public function salvarComanda(bool $limparAposalvar = true): void
     {
         if (empty($this->carrinho)) {
+            $this->toastWarning('Carrinho vazio! Adicione itens para salvar a mesa.');
             return;
         }
 
@@ -590,9 +582,10 @@ public function finalizarSemNF()
             $this->comandaId = null;
             $this->formaPagamento = 'dinheiro';
 
-            $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $mesaSalva . ' salva!');
+            $this->toastSuccess("Mesa {$mesaSalva} salva! Continue depois.");
         } else {
             $this->recalcularPendente();
+            $this->toastSuccess("Itens adicionados à mesa {$comanda->mesa}.");
         }
     }
 
@@ -605,14 +598,14 @@ public function finalizarSemNF()
         $comanda = Comanda::find($this->comandaId);
 
         if (! $comanda) {
-            $this->dispatch('pdv-aviso', mensagem: 'Comanda não encontrada.');
+            $this->toastError('Comanda não encontrada.');
             return;
         }
 
         $valorInformado = round((float) $this->valorPagamento, 2);
 
         if ($valorInformado <= 0) {
-            $this->dispatch('pdv-aviso', mensagem: 'Informe um valor para pagamento.');
+            $this->toastWarning('Informe um valor para pagamento.');
             return;
         }
 
@@ -627,7 +620,7 @@ public function finalizarSemNF()
         }
 
         if ($valorEfetivo <= 0) {
-            $this->dispatch('pdv-aviso', mensagem: 'Valor inválido!');
+            $this->toastWarning('Valor inválido!');
             return;
         }
 
@@ -648,13 +641,13 @@ public function finalizarSemNF()
         $this->valorPendente = (float) $comanda->total_restante;
         $this->valorPagamento = (float) $comanda->total_restante;
 
-        $mensagem = 'Pagamento lançado! Restante: R$ ' . number_format($comanda->total_restante, 2, ',', '.');
+        $mensagem = "Pagamento lançado! Restante: R$ " . number_format($comanda->total_restante, 2, ',', '.');
 
         if ($troco > 0) {
-            $mensagem .= ' | Troco: R$ ' . number_format($troco, 2, ',', '.');
+            $mensagem .= " | Troco: R$ " . number_format($troco, 2, ',', '.');
         }
 
-        $this->dispatch('pdv-sucesso', mensagem: $mensagem);
+        $this->toastSuccess($mensagem);
     }
 
     private function fecharComanda(Comanda $comanda): void
@@ -725,10 +718,10 @@ public function finalizarSemNF()
             $this->modoComanda = false;
             $this->formaPagamento = 'dinheiro';
 
-            $this->dispatch('pdv-sucesso', mensagem: 'Mesa ' . $mesaFechada . ' fechada!');
+            $this->toastSuccess("Mesa {$mesaFechada} fechada com sucesso!");
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->dispatch('pdv-aviso', mensagem: 'Erro ao fechar comanda: ' . $e->getMessage());
+            $this->toastError('Erro ao fechar comanda: ' . $e->getMessage());
         }
     }
 

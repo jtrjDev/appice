@@ -4,16 +4,24 @@ namespace App\Livewire\Tenant\PDV;
 
 use App\Models\Tenant\Caixa as CaixaModel;
 use App\Models\Tenant\Pedido;
+use App\Models\Tenant\Sangria;
 use Illuminate\Support\Facades\DB;
+use App\Livewire\Traits\WithToast; // Importar o trait
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 
 class Caixa extends Component
 {
+    use WithToast; // Usar o trait
     public ?int $caixaId = null;
     public float $saldoFinalInformado = 0;
     public string $observacao = '';
     public bool $mostrarFechamento = false;
+  
+    public $mostrarModalSangria = false;
+    public $tipoSangria = 'sangria';
+    public $valorSangria = '';
+    public $motivoSangria = '';
 
     public function mount(): void
     {
@@ -61,18 +69,80 @@ public function totalPorForma(): array
     ];
 }
 
-    #[Computed]
-    public function saldoEsperado(): float
-    {
-        if (!$this->caixa) return 0;
-        return (float) $this->caixa->saldo_inicial + (float) $this->caixa->total_dinheiro;
-    }
+public function abrirModalSangria($tipo)
+{
+    $this->tipoSangria = $tipo;
+    $this->valorSangria = '';
+    $this->motivoSangria = '';
+    $this->mostrarModalSangria = true;
+}
 
-    #[Computed]
-    public function diferenca(): float
-    {
-        return $this->saldoFinalInformado - $this->saldoEsperado;
+public function salvarSangria()
+{
+    $this->validate([
+        'valorSangria' => 'required|numeric|min:0.01',
+        'motivoSangria' => 'required|string|min:3',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        // Buscar o usuário do tenant
+        $tenantUser = \App\Models\Tenant\User::where('email', auth()->user()->email)->first();
+        
+        if (!$tenantUser) {
+            throw new \Exception('Usuário não encontrado no tenant');
+        }
+
+        Sangria::create([
+            'caixa_id' => $this->caixa->id,
+            'valor' => $this->valorSangria,
+            'tipo' => $this->tipoSangria,
+            'motivo' => $this->motivoSangria,
+            'user_id' => $tenantUser->id,
+        ]);
+
+        // Atualizar totais do caixa
+        if ($this->tipoSangria == 'sangria') {
+            $this->caixa->increment('total_sangrias', $this->valorSangria);
+        } else {
+            $this->caixa->increment('total_suprimentos', $this->valorSangria);
+        }
+
+        DB::commit();
+
+        $this->mostrarModalSangria = false;
+          $this->toastSuccess('Ação realizada com sucesso!');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        $this->toastError('Erro ao finalizar sangria!');
     }
+}
+
+#[Computed]
+public function totalSangrias()
+{
+    return $this->caixa->total_sangrias ?? 0;
+}
+
+#[Computed]
+public function totalSuprimentos()
+{
+    return $this->caixa->total_suprimentos ?? 0;
+}
+
+#[Computed]
+public function saldoEsperado()
+{
+    return $this->caixa->saldo_inicial + $this->totalVendas - $this->totalSangrias + $this->totalSuprimentos;
+}
+
+   
+   #[Computed]
+public function diferenca(): float
+{
+    return ($this->saldoFinalInformado ?? 0) - $this->saldoEsperado;
+}
 
     public function abrirCaixa(float $saldoInicial = 0): void
     {
@@ -83,7 +153,7 @@ public function totalPorForma(): array
         ]);
 
         $this->caixaId = $caixa->id;
-        $this->dispatch('pdv-sucesso', mensagem: 'Caixa aberto com sucesso!');
+        $this->toastSuccess('Caixa aberto com sucesso!');
     }
 
     public function abrirModalFechamento(): void
@@ -110,13 +180,28 @@ public function totalPorForma(): array
 
             $this->caixaId = null;
             $this->mostrarFechamento = false;
-            $this->dispatch('pdv-sucesso', mensagem: 'Caixa fechado com sucesso!');
+            $this->toastSuccess('Caixa fechado com sucesso!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->dispatch('pdv-aviso', mensagem: 'Erro ao fechar caixa: ' . $e->getMessage());
+            $this->toastError('Erro ao fechar caixa!');
         }
     }
+
+    #[Computed]
+public function totalVendas()
+{
+    return $this->caixa->total_vendas;
+}
+
+
+#[Computed]
+public function totaisMaquinas()
+{
+    // Se você tiver uma tabela de máquinas, pode agrupar por máquina
+    // Exemplo fictício - adapte conforme sua necessidade
+    return [];
+}
 
     public function render()
     {

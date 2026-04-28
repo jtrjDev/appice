@@ -1,476 +1,496 @@
-<div x-data="{ 
-        showPayment: false,
-        init() {
-            // Forçar foco no campo código ao carregar
-            this.$nextTick(() => {
-                const campoCodigo = document.getElementById('campo-codigo');
-                if (campoCodigo) {
-                    campoCodigo.focus();
-                }
-            });
-            
-            // Registrar atalho F8 globalmente
-            document.addEventListener('keydown', this.handleKeydown.bind(this));
-        },
-        handleKeydown(e) {
-            // Ignora se está digitando em input/textarea/select
-            const target = e.target;
-            const isInput = target.tagName === 'INPUT' && target.type !== 'hidden';
-            const isSelect = target.tagName === 'SELECT';
-            const isTextarea = target.tagName === 'TEXTAREA';
-            
-            if (isInput || isSelect || isTextarea) {
-                // Permite F2, F5, F6, F8 mesmo dentro de inputs
-                if (!['F2', 'F5', 'F6', 'F8'].includes(e.key)) return;
-            }
-            
-            if (e.key === 'F2') {
-                e.preventDefault();
-                const campoCodigo = document.getElementById('campo-codigo');
-                if (campoCodigo) campoCodigo.focus();
-            }
-            
-            if (e.key === 'F5') {
-                e.preventDefault();
-                const component = document.querySelector('[wire\\:id]');
-                if (!component) return;
-                const wireId = component.getAttribute('wire:id');
-                const wire = Livewire.find(wireId);
-                if (wire) wire.call('acaoF5');
-            }
-            
-            if (e.key === 'F6') {
-                e.preventDefault();
-                if (confirm('Nova venda?')) {
-                    const component = document.querySelector('[wire\\:id]');
-                    if (!component) return;
-                    const wireId = component.getAttribute('wire:id');
-                    const wire = Livewire.find(wireId);
-                    if (wire) {
-                        wire.set('mesa', '');
-                        wire.set('modoComanda', false);
-                        wire.set('comandaId', null);
-                        wire.call('limparCarrinho');
-                    }
-                }
-            }
-            
-            if (e.key === 'F8') {
-                e.preventDefault();
-                this.showPayment = true;
-                // Ao abrir o pagamento, focar no valor se já houver forma selecionada
-                this.$nextTick(() => {
-                    const inputValor = document.getElementById('input-valor-pagamento');
-                    if (inputValor) inputValor.focus();
-                });
-            }
-        }
-    }"
-    class="min-h-screen lg:h-screen lg:overflow-hidden bg-[#f1f5f9] dark:bg-[#0f172a] p-2 sm:p-4 font-sans antialiased">
-
-    {{-- Cabeçalho Profissional --}}
-    <div class="mb-4 flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <div class="flex items-center gap-4">
-            <div class="size-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-indigo-600/20">
-                🚀
+<div
+    x-data="pdvTelaUnica()"
+    x-init="init()"
+    class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-ink-950 dark:to-ink-950 p-2 sm:p-3"
+>
+    {{-- CABEÇALHO COMPACTO --}}
+    <div class="mb-2 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-2">
+        <div class="flex items-center gap-3">
+            <div class="size-10 rounded-xl bg-gradient-to-br from-ink-800 to-ink-900 dark:from-ink-200 dark:to-ink-100 flex items-center justify-center shadow-lg shrink-0">
+                <svg class="size-5 text-white dark:text-ink-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 5.6A1 1 0 006.6 20h10.8a1 1 0 001-1.4L17 13M9 20a1 1 0 100 2 1 1 0 000-2zm8 0a1 1 0 100 2 1 1 0 000-2z"/>
+                </svg>
             </div>
+
             <div>
-                <h1 class="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none">
-                    PDV Master
+                <h1 class="text-lg sm:text-xl font-black bg-gradient-to-r from-ink-900 to-ink-600 dark:from-ink-100 dark:to-ink-400 bg-clip-text text-transparent leading-tight">
+                    PONTO DE VENDA
                 </h1>
-                <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 mt-1 uppercase tracking-widest">Atendimento Profissional</p>
+                <p class="text-[10px] text-ink-500 dark:text-ink-400">
+                    Tela única: produtos, carrinho e pagamento sem modal.
+                </p>
             </div>
         </div>
 
-        <div class="hidden lg:flex items-center gap-6">
-            <div class="flex items-center gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                <div class="text-right">
-                    <p class="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Atalhos Rápidos</p>
-                    <div class="flex gap-2">
-                        <span class="text-[10px] font-bold text-slate-600 dark:text-slate-300"><kbd class="bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded shadow-sm mr-1">F2</kbd>Buscar</span>
-                        <span class="text-[10px] font-bold text-slate-600 dark:text-slate-300"><kbd class="bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded shadow-sm mr-1">F8</kbd>Pagar</span>
-                    </div>
-                </div>
-            </div>
-            <div class="h-10 w-px bg-slate-200 dark:bg-slate-800"></div>
-            <div class="text-right">
-                <p class="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Data e Hora</p>
-                <p class="text-sm font-black text-slate-700 dark:text-slate-200">{{ now()->format('d/m/Y H:i') }}</p>
+        {{-- Atalhos --}}
+        <div class="w-full xl:w-auto overflow-x-auto">
+            <div class="flex items-center gap-2 bg-white/90 dark:bg-ink-800/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-ink-700 min-w-max">
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F2</kbd><span class="pdv-shortcut-text">Código</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F3</kbd><span class="pdv-shortcut-text">Busca</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F4</kbd><span class="pdv-shortcut-text">Qtd</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F5</kbd><span class="pdv-shortcut-text">Valor</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F6</kbd><span class="pdv-shortcut-text">Novo</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F7</kbd><span class="pdv-shortcut-text">Dinheiro</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F8</kbd><span class="pdv-shortcut-text">Crédito</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F9</kbd><span class="pdv-shortcut-text">Débito</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">F10</kbd><span class="pdv-shortcut-text">PIX</span></div>
+                <div class="pdv-separator"></div>
+                <div class="flex items-center gap-1"><kbd class="pdv-kbd">Ctrl+Enter</kbd><span class="pdv-shortcut-text">Finalizar</span></div>
             </div>
         </div>
     </div>
 
-    {{-- Status do Caixa --}}
+    {{-- STATUS DO CAIXA COMPACTO --}}
     @if($this->caixaAberto)
-        <div class="mb-4 flex flex-wrap items-center gap-4 px-5 py-3 bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-2xl">
-            <div class="flex items-center gap-2">
-                <span class="relative flex h-3 w-3">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-                <span class="font-black text-emerald-700 dark:text-emerald-400 text-xs uppercase tracking-widest">Caixa Operante</span>
-            </div>
-            <div class="h-4 w-px bg-emerald-200 dark:bg-emerald-800"></div>
-            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-500">
-                Operador: <span class="text-emerald-800 dark:text-emerald-300">{{ $this->caixaAberto->operador->name ?? 'N/A' }}</span>
+        <div class="mb-2 flex flex-wrap items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl shadow-sm">
+            <span class="relative size-2.5 rounded-full bg-emerald-500 block">
+                <span class="absolute inset-0 rounded-full bg-emerald-500 animate-ping"></span>
             </span>
-            <div class="ml-auto flex items-center gap-4">
-                <div class="text-right">
-                    <p class="text-[9px] font-black text-emerald-600/50 uppercase leading-none">Total em Vendas</p>
-                    <p class="text-sm font-black text-emerald-700 dark:text-emerald-400">R$ {{ number_format($this->caixaAberto->total_vendas, 2, ',', '.') }}</p>
-                </div>
-            </div>
+            <span class="font-bold text-emerald-700 dark:text-emerald-400 text-xs">💰 CAIXA ABERTO</span>
+            <span class="text-emerald-600 dark:text-emerald-500 text-xs hidden sm:inline">•</span>
+            <span class="text-xs text-emerald-600 dark:text-emerald-400 font-mono">{{ $this->caixaAberto->aberto_em->format('d/m H:i') }}</span>
+            <span class="text-emerald-600 dark:text-emerald-500 text-xs hidden sm:inline">•</span>
+            <span class="text-xs text-emerald-600 dark:text-emerald-400">{{ $this->caixaAberto->operador->name ?? 'OPERADOR' }}</span>
+            <span class="text-emerald-600 dark:text-emerald-500 text-xs hidden sm:inline">•</span>
+            <span class="text-xs text-emerald-600 dark:text-emerald-400">{{ $this->caixaAberto->quantidade_vendas }} vendas</span>
+            <span class="text-emerald-600 dark:text-emerald-500 text-xs hidden sm:inline">•</span>
+            <span class="text-xs font-black text-emerald-700 dark:text-emerald-400">R$ {{ number_format($this->caixaAberto->total_vendas, 2, ',', '.') }}</span>
         </div>
     @else
-        <div class="mb-4 flex items-center justify-between px-5 py-3 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50 rounded-2xl">
-            <div class="flex items-center gap-3">
-                <div class="size-8 bg-rose-500 rounded-full flex items-center justify-center text-white animate-pulse">⚠️</div>
-                <span class="font-black text-rose-700 dark:text-rose-400 text-xs uppercase tracking-widest">Atenção: Caixa Fechado</span>
+        <div class="mb-2 flex items-center justify-between gap-3 px-3 py-1.5 bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-200 dark:border-rose-800 rounded-xl shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="size-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span class="font-bold text-red-700 dark:text-red-400 text-xs">⚠️ NENHUM CAIXA ABERTO</span>
+                <span class="hidden sm:inline text-xs text-red-600 dark:text-red-500">— Abra o caixa para iniciar as vendas</span>
             </div>
             <a href="{{ route('tenant.caixa') }}"
-                class="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-rose-600/20">
-                Abrir Agora
+               class="px-3 py-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                ABRIR CAIXA
             </a>
         </div>
     @endif
 
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:h-[calc(100vh-160px)] min-h-0">
+    @php
+        $totalPago = round(collect($pagamentos)->sum('valor'), 2);
+        $pendente = max(0, $this->totalCarrinho - $totalPago);
+    @endphp
 
-        {{-- COLUNA ESQUERDA — Catálogo --}}
-        <div class="xl:col-span-7 flex flex-col min-h-0 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            
-            <div class="p-5 space-y-4 shrink-0 border-b border-slate-100 dark:border-slate-800">
-                {{-- Barra de busca avançada --}}
-                <div class="grid grid-cols-12 gap-3">
-                    <div class="col-span-12 md:col-span-7 relative">
-                        <input type="text" wire:model.live.debounce.300ms="busca" placeholder="Pesquisar produto ou categoria..."
-                            class="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xl opacity-40">🔍</span>
+    {{-- TELA ÚNICA EM 3 COLUNAS: PRODUTOS | CARRINHO | PAGAMENTO --}}
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-2 xl:h-[calc(100vh-118px)] min-h-0">
+
+        {{-- COLUNA 1: PRODUTOS --}}
+        <section class="xl:col-span-6 bg-white dark:bg-ink-900 rounded-2xl border border-gray-200 dark:border-ink-700 shadow-lg overflow-hidden flex flex-col min-h-[520px] xl:min-h-0">
+
+            {{-- Busca --}}
+            <div class="p-2.5 space-y-2 border-b border-gray-100 dark:border-ink-800 bg-gradient-to-b from-white to-gray-50 dark:from-ink-900 dark:to-ink-800/30 shrink-0">
+                <div class="grid grid-cols-12 gap-2">
+                    <div class="col-span-12 md:col-span-5 relative group">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="size-4 text-ink-400 group-focus-within:text-primary-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            wire:model.live.debounce.300ms="busca"
+                            placeholder="Buscar produto..."
+                            id="campo-busca"
+                            autocomplete="off"
+                            class="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-ink-700 rounded-xl bg-white dark:bg-ink-800 text-sm focus:outline-none focus:ring-2 focus:ring-ink-500 focus:border-transparent transition-all"
+                        >
                     </div>
 
-                    <div class="col-span-8 md:col-span-3 relative">
-                        <input type="text" wire:model="codigoProduto" wire:keydown.enter="buscarPorCodigo" placeholder="Cód/EAN" id="campo-codigo"
-                            class="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg opacity-40">🏷️</span>
+                    <div class="col-span-8 md:col-span-5 relative group">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="size-4 text-ink-400 group-focus-within:text-primary-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h1m1 0h1M4 12h1m1 0h1M4 18h1m1 0h1M15 6h1m1 0h1M15 12h1m1 0h1M15 18h1m1 0h1M9 3v18M12 3v18"/>
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            wire:model="codigoProduto"
+                            wire:keydown.enter="buscarPorCodigo"
+                            placeholder="Código / ID"
+                            id="campo-codigo"
+                            autocomplete="off"
+                            class="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-ink-700 rounded-xl bg-white dark:bg-ink-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ink-500 focus:border-transparent transition-all"
+                        >
                     </div>
 
-                    <div class="col-span-4 md:col-span-2 relative">
-                        <input type="text" placeholder="1.0" id="campo-quantidade"
+                    <div class="col-span-4 md:col-span-2 relative group">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="size-4 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="1,000"
+                            id="campo-quantidade"
                             x-data="{ raw: '' }"
-                            x-on:keydown.enter="
+                            x-on:keydown.enter.prevent="
                                 let num = raw === '' ? 1 : parseInt(raw) / 1000;
                                 $wire.set('quantidadeInput', num).then(() => {
-                                    document.getElementById('campo-codigo').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                                    const codigo = document.getElementById('campo-codigo');
+                                    if (codigo) {
+                                        codigo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                                        codigo.focus();
+                                    }
                                 });
                             "
                             x-on:keydown="
                                 if (event.key === 'Enter') return;
-                                if (event.key === 'Backspace') { raw = raw.slice(0, -1); } 
-                                else if (event.key >= '0' && event.key <= '9') { raw = raw + event.key; } 
-                                else { return; }
+                                if (event.key === 'Tab') return;
+
+                                if (event.key === 'Backspace') {
+                                    raw = raw.slice(0, -1);
+                                } else if (event.key >= '0' && event.key <= '9') {
+                                    raw = raw + event.key;
+                                } else {
+                                    return;
+                                }
+
                                 event.preventDefault();
+
                                 let num = raw === '' ? 0 : parseInt(raw) / 1000;
-                                $el.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+                                $el.value = num.toLocaleString('pt-BR', {
+                                    minimumFractionDigits: 3,
+                                    maximumFractionDigits: 3
+                                });
                             "
-                            x-on:focus="raw = ''; $el.value = '1,000'"
-                            x-on:blur="let num = raw === '' ? 1 : parseInt(raw) / 1000; $wire.set('quantidadeInput', num); raw = '';"
-                            class="w-full px-4 py-3.5 bg-indigo-50 dark:bg-indigo-900/20 border-none rounded-2xl text-sm font-black text-indigo-600 text-center focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
+                            x-on:focus="raw = ''; $el.value = '1,000'; $el.select();"
+                            x-on:blur="
+                                let num = raw === '' ? 1 : parseInt(raw) / 1000;
+                                $wire.set('quantidadeInput', num);
+                                raw = '';
+                            "
+                            class="w-full pl-9 pr-2 py-2 border border-gray-200 dark:border-ink-700 rounded-xl bg-white dark:bg-ink-800 text-sm text-center font-black focus:outline-none focus:ring-2 focus:ring-ink-500 focus:border-transparent transition-all"
+                        >
                     </div>
                 </div>
 
-                {{-- Filtro de Categorias Moderno --}}
-                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                {{-- Categorias --}}
+                <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                     <button wire:click="selecionarCategoria(null)"
-                        class="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all
-                            {{ !$categoriaSelecionada ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                        class="px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ink-500 focus:ring-offset-2
+                            {{ !$categoriaSelecionada ? 'bg-gradient-to-r from-ink-800 to-ink-900 text-white shadow-md' : 'bg-gray-100 text-ink-700 hover:bg-gray-200 dark:bg-ink-800 dark:text-ink-300' }}">
                         📦 TODOS
                     </button>
+
                     @foreach($categorias as $categoria)
                         <button wire:click="selecionarCategoria({{ $categoria->id }})"
-                            class="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all
-                                {{ $categoriaSelecionada == $categoria->id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                            class="px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ink-500 focus:ring-offset-2
+                                {{ $categoriaSelecionada == $categoria->id ? 'bg-gradient-to-r from-ink-800 to-ink-900 text-white shadow-md' : 'bg-gray-100 text-ink-700 hover:bg-gray-200 dark:bg-ink-800 dark:text-ink-300' }}">
                             {{ $categoria->icone ?? '📌' }} {{ $categoria->nome }}
                         </button>
                     @endforeach
                 </div>
             </div>
 
-            {{-- Grid de Produtos Estilo Galeria --}}
-            <div class="flex-1 min-h-0 overflow-y-auto p-5 scrollbar-thin bg-slate-50/30 dark:bg-slate-900/30">
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 content-start">
+            {{-- Grid de Produtos --}}
+            <div class="flex-1 min-h-0 overflow-y-auto p-2 scrollbar-thin">
+                <div class="grid grid-cols-[repeat(auto-fill,minmax(105px,1fr))] gap-2 content-start">
                     @forelse($produtos as $produto)
-                        <button wire:click="adicionarProduto({{ $produto->id }})" wire:key="prod-{{ $produto->id }}"
-                            class="group relative bg-white dark:bg-slate-800 p-4 rounded-[2rem] border border-slate-100 dark:border-slate-700 text-center hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300 active:scale-95 overflow-hidden">
-                            <div class="mb-3 mx-auto size-16 bg-slate-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
-                                {{ $produto->icone ?? '📦' }}
+                        <button
+                            wire:click="adicionarProduto({{ $produto->id }})"
+                            wire:key="prod-{{ $produto->id }}"
+                            class="group bg-white dark:bg-ink-800 rounded-xl border border-gray-200 dark:border-ink-700 p-2 text-center hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-ink-500 focus:ring-offset-2"
+                        >
+                            <div class="w-full h-12 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-ink-700 dark:to-ink-600 rounded-lg flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                                <span class="text-2xl xl:text-3xl">{{ $produto->icone ?? '📦' }}</span>
                             </div>
-                            <h4 class="font-black text-[11px] uppercase leading-tight text-slate-800 dark:text-slate-100 line-clamp-2 min-h-[2.2rem]">
-                                {{ $produto->nome }}
-                            </h4>
-                            <div class="mt-3 pt-3 border-t border-slate-50 dark:border-slate-700 flex flex-col items-center">
-                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Preço Unit.</span>
-                                <span class="text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {{ number_format($produto->preco_atual, 2, ',', '.') }}</span>
-                            </div>
-                            <div class="absolute top-2 right-2 size-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-black opacity-0 group-hover:opacity-100 transition-opacity">+</div>
+                            <p class="font-bold text-[11px] leading-tight line-clamp-2 text-ink-800 dark:text-ink-200 mb-1">{{ $produto->nome }}</p>
+                            <p class="text-xs xl:text-sm font-black text-primary-600">R$ {{ number_format($produto->preco_atual, 2, ',', '.') }}</p>
+                            @if($produto->codigo)
+                                <p class="text-[10px] text-ink-400 font-mono mt-0.5">#{{ $produto->codigo }}</p>
+                            @endif
                         </button>
                     @empty
-                        <div class="col-span-full py-20 text-center opacity-20">
-                            <span class="text-6xl">📦</span>
-                            <p class="mt-4 font-black uppercase tracking-widest">Nenhum item disponível</p>
+                        <div class="col-span-full text-center py-16">
+                            <svg class="size-16 mx-auto text-ink-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7H4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1zM16 3H8l-1 4h10l-1-4z"/>
+                            </svg>
+                            <p class="text-ink-500 font-medium">Nenhum produto encontrado</p>
+                            <p class="text-xs text-ink-400 mt-1">Cadastre produtos para começar a vender</p>
                         </div>
                     @endforelse
                 </div>
             </div>
-        </div>
+        </section>
 
-        {{-- COLUNA DIREITA — Carrinho --}}
-        <div class="xl:col-span-5 flex flex-col min-h-0 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-            
-            <div class="p-5 bg-slate-900 dark:bg-black text-white shrink-0">
-                <div class="flex justify-between items-center mb-5">
-                    <div class="flex items-center gap-3">
-                        <div class="size-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-indigo-600/20">🛒</div>
-                        <div>
-                            <h3 class="font-black text-sm uppercase tracking-tighter">Resumo da Venda</h3>
-                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ number_format($this->totalItens, 0) }} itens no total</p>
-                        </div>
+        {{-- COLUNA 2: CARRINHO --}}
+        <section class="xl:col-span-3 bg-white dark:bg-ink-900 rounded-2xl border border-gray-200 dark:border-ink-700 shadow-lg overflow-hidden flex flex-col min-h-[520px] xl:min-h-0">
+
+            {{-- Mesa / Cliente --}}
+            <div class="px-3 py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-ink-800 dark:to-ink-800/50 border-b border-gray-200 dark:border-ink-700 shrink-0">
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <span class="font-black text-ink-900 dark:text-ink-50 text-sm">CARRINHO</span>
+                        <span class="text-xs font-medium text-ink-500 ml-1">({{ number_format($this->totalItens, 0) }})</span>
                     </div>
+
                     @if(count($carrinho) > 0)
-                        <button wire:click="limparCarrinho" wire:confirm="Limpar carrinho?" class="px-3 py-1.5 bg-rose-600/10 text-rose-500 rounded-lg text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all">Limpar</button>
+                        <button wire:click="limparCarrinho" wire:confirm="Limpar carrinho?"
+                            class="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg px-2 py-1">
+                            LIMPAR
+                        </button>
                     @endif
                 </div>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">📍</span>
-                        <input type="text" wire:model.live.debounce.500ms="mesa" placeholder="Mesa / Comanda"
-                            class="w-full pl-9 pr-3 py-2.5 bg-white/5 border-none rounded-xl text-xs text-white focus:ring-1 focus:ring-indigo-500 transition-all outline-none">
+
+                <div class="grid grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] font-bold text-ink-500 uppercase tracking-wider">Mesa</label>
+                        <input
+                            type="text"
+                            wire:model.live.debounce.500ms="mesa"
+                            id="campo-mesa"
+                            class="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 dark:border-ink-700 rounded-lg bg-white dark:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-ink-500 transition-all"
+                            placeholder="Nº"
+                        >
                     </div>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">👤</span>
-                        <select wire:model="clienteId" class="w-full pl-9 pr-3 py-2.5 bg-white/5 border-none rounded-xl text-xs text-white focus:ring-1 focus:ring-indigo-500 transition-all outline-none">
-                            <option value="" class="text-slate-900">Consumidor Padrão</option>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-ink-500 uppercase tracking-wider">Cliente</label>
+                        <select
+                            wire:model="clienteId"
+                            id="campo-cliente"
+                            class="w-full mt-1 px-2.5 py-1.5 text-sm border border-gray-200 dark:border-ink-700 rounded-lg bg-white dark:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-ink-500 transition-all"
+                        >
+                            <option value="">Consumidor</option>
                             @foreach($clientes as $cliente)
-                                <option value="{{ $cliente->id }}" class="text-slate-900">{{ $cliente->nome }}</option>
+                                <option value="{{ $cliente->id }}">{{ $cliente->nome }}</option>
                             @endforeach
                         </select>
                     </div>
                 </div>
             </div>
 
-            <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 scrollbar-thin bg-slate-50/50 dark:bg-slate-900/50">
+            {{-- Itens --}}
+            <div class="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100 dark:divide-ink-700 scrollbar-thin">
                 @forelse($carrinho as $chave => $item)
-                    <div class="flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 group transition-all hover:border-indigo-200 dark:hover:border-indigo-900" wire:key="item-{{ $chave }}">
-                        <div class="size-12 bg-slate-50 dark:bg-slate-700 rounded-xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform">{{ $item['icone'] ?? '📦' }}</div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex justify-between items-start">
-                                <h5 class="font-black text-xs uppercase truncate text-slate-800 dark:text-slate-200">{{ $item['nome'] }}</h5>
-                                <button wire:click="removerProduto({{ $item['id'] }})" class="text-slate-300 hover:text-rose-500 transition-colors">✕</button>
+                    <div class="px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-ink-800/30 transition-colors" wire:key="item-{{ $chave }}">
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="flex-1 min-w-0">
+                                <p class="font-bold text-sm text-ink-900 dark:text-ink-100 truncate">{{ $item['nome'] }}</p>
+                                <p class="text-[11px] text-ink-500">{{ $item['preco_formatado'] }}</p>
+                                @if(isset($item['observacao']) && $item['observacao'])
+                                    <p class="text-[10px] text-amber-600 dark:text-amber-400 mt-1 italic line-clamp-1">Obs: {{ $item['observacao'] }}</p>
+                                @endif
                             </div>
-                            <div class="flex justify-between items-center mt-2">
-                                <div class="flex items-center gap-3 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-xl shadow-inner">
-                                    <button wire:click="atualizarQuantidade({{ $item['id'] }}, {{ $item['quantidade'] - 1 }})" class="text-slate-400 hover:text-indigo-600 transition-colors font-bold">➖</button>
-                                    <span class="text-xs font-black min-w-[2rem] text-center">{{ number_format($item['quantidade'], $item['quantidade'] == intval($item['quantidade']) ? 0 : 3, ',', '.') }}</span>
-                                    <button wire:click="atualizarQuantidade({{ $item['id'] }}, {{ $item['quantidade'] + 1 }})" class="text-slate-400 hover:text-indigo-600 transition-colors font-bold">➕</button>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-[9px] font-bold text-slate-400 uppercase leading-none">{{ $item['preco_formatado'] }}</p>
-                                    <p class="font-black text-sm text-indigo-600 dark:text-indigo-400">R$ {{ number_format($item['subtotal'], 2, ',', '.') }}</p>
-                                </div>
+
+                            <button wire:click="removerProduto({{ $item['id'] }})"
+                                class="text-red-400 hover:text-red-600 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg"
+                                title="Remover item">
+                                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="flex justify-between items-center mt-2">
+                            <div class="flex items-center gap-1.5">
+                                <button wire:click="atualizarQuantidade({{ $item['id'] }}, {{ $item['quantidade'] - 1 }})"
+                                    class="size-7 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-ink-700 dark:hover:bg-ink-600 text-ink-700 dark:text-ink-100 flex items-center justify-center font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-ink-500">−</button>
+
+                                <span class="w-12 text-center font-bold text-xs">
+                                    {{ number_format($item['quantidade'], $item['quantidade'] == intval($item['quantidade']) ? 0 : 3, ',', '.') }}
+                                </span>
+
+                                <button wire:click="atualizarQuantidade({{ $item['id'] }}, {{ $item['quantidade'] + 1 }})"
+                                    class="size-7 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-ink-700 dark:hover:bg-ink-600 text-ink-700 dark:text-ink-100 flex items-center justify-center font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-ink-500">+</button>
                             </div>
+
+                            <p class="font-black text-xs text-ink-900 dark:text-ink-100">
+                                R$ {{ number_format($item['subtotal'], 2, ',', '.') }}
+                            </p>
                         </div>
                     </div>
                 @empty
-                    <div class="h-full flex flex-col items-center justify-center py-20 opacity-20">
-                        <div class="size-20 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center text-4xl mb-4">🛒</div>
-                        <p class="font-black uppercase tracking-widest text-xs">Carrinho Vazio</p>
+                    <div class="h-full flex flex-col items-center justify-center py-14 text-center">
+                        <svg class="size-14 text-ink-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                        <p class="text-ink-500 font-medium">Carrinho vazio</p>
+                        <p class="text-xs text-ink-400 mt-1">Digite o código e pressione Enter</p>
                     </div>
                 @endforelse
             </div>
 
-            <div class="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
-                @php
-                    $totalPago = round(collect($pagamentos)->sum('valor'), 2);
-                    $pendente = max(0, $this->totalCarrinho - $totalPago);
-                @endphp
-                <div class="flex justify-between items-center mb-6">
+            {{-- Total compacto do carrinho --}}
+            <div class="shrink-0 border-t border-gray-200 dark:border-ink-700 p-3 bg-gray-50 dark:bg-ink-800/60">
+                <div class="flex items-end justify-between gap-2">
                     <div>
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total da Venda</p>
-                        <p class="text-4xl font-black text-slate-900 dark:text-white leading-none tracking-tighter">R$ {{ number_format($this->totalCarrinho, 2, ',', '.') }}</p>
+                        <p class="text-[10px] uppercase font-black text-ink-400">Total</p>
+                        <p class="text-2xl font-black text-primary-600 leading-none">R$ {{ number_format($this->totalCarrinho, 2, ',', '.') }}</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Status Pagamento</p>
-                        <span class="px-3 py-1.5 {{ $pendente > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600' }} rounded-full text-[10px] font-black uppercase tracking-widest">
-                            {{ $pendente > 0 ? 'Pendente' : 'Pago' }}
-                        </span>
+                        <p class="text-[10px] uppercase font-black text-ink-400">Falta</p>
+                        <p class="text-sm font-black {{ $pendente > 0 ? 'text-red-600' : 'text-green-600' }}">R$ {{ number_format($pendente, 2, ',', '.') }}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {{-- COLUNA 3: PAGAMENTO --}}
+        <section class="xl:col-span-3 bg-white dark:bg-ink-900 rounded-2xl border border-gray-200 dark:border-ink-700 shadow-lg overflow-hidden flex flex-col min-h-[520px] xl:min-h-0">
+
+            <div class="px-3 py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-ink-800 dark:to-ink-800/50 border-b border-gray-200 dark:border-ink-700 shrink-0">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-black text-sm text-ink-900 dark:text-ink-50">PAGAMENTO</h2>
+                        <p class="text-[10px] text-ink-500">Sem modal, direto na tela</p>
+                    </div>
+                    <span class="text-xs font-black px-2 py-1 rounded-full {{ $pendente > 0 ? 'bg-red-50 text-red-600 dark:bg-red-900/20' : 'bg-green-50 text-green-600 dark:bg-green-900/20' }}">
+                        {{ $pendente > 0 ? 'PENDENTE' : 'OK' }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-3 space-y-3">
+                {{-- Totais --}}
+                <div class="grid grid-cols-1 2xl:grid-cols-3 gap-2">
+                    <div class="rounded-xl bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-ink-700 px-3 py-2">
+                        <p class="text-[10px] uppercase font-black text-ink-400">Total</p>
+                        <p class="text-base font-black text-primary-600 leading-tight">R$ {{ number_format($this->totalCarrinho, 2, ',', '.') }}</p>
+                    </div>
+
+                    <div class="rounded-xl bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-ink-700 px-3 py-2">
+                        <p class="text-[10px] uppercase font-black text-ink-400">Pago</p>
+                        <p class="text-base font-black text-green-600 leading-tight">R$ {{ number_format($totalPago, 2, ',', '.') }}</p>
+                    </div>
+
+                    <div class="rounded-xl bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-ink-700 px-3 py-2">
+                        <p class="text-[10px] uppercase font-black text-ink-400">Falta</p>
+                        <p class="text-base font-black leading-tight {{ $pendente > 0 ? 'text-red-600' : 'text-green-600' }}">R$ {{ number_format($pendente, 2, ',', '.') }}</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    @if($modoComanda && $mesa)
-                        <button wire:click="salvarComanda" @if(empty($carrinho)) disabled @endif
-                            class="py-4 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all disabled:opacity-30">
-                            💾 Salvar Comanda
-                        </button>
-                    @endif
-                    <button @click="showPayment = true; $nextTick(() => document.getElementById('input-valor-pagamento')?.focus())" @if(empty($carrinho)) disabled @endif
-                        class="{{ ($modoComanda && $mesa) ? 'col-span-1' : 'col-span-2' }} py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-600/30 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-30">
-                        💳 Finalizar Venda (F8)
+                {{-- Formas --}}
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button"
+                        @click="selecionarPagamento('dinheiro')"
+                        wire:click="$set('formaPagamento', 'dinheiro')"
+                        class="pdv-payment-btn {{ $formaPagamento === 'dinheiro' ? 'pdv-payment-active' : 'pdv-payment-default' }}">
+                        <span class="text-xl">💰</span>
+                        <span class="text-[10px] font-black uppercase">F7 Dinheiro</span>
+                    </button>
+
+                    <button type="button"
+                        @click="selecionarPagamento('cartao_credito')"
+                        wire:click="$set('formaPagamento', 'cartao_credito')"
+                        class="pdv-payment-btn {{ $formaPagamento === 'cartao_credito' ? 'pdv-payment-active' : 'pdv-payment-default' }}">
+                        <span class="text-xl">💳</span>
+                        <span class="text-[10px] font-black uppercase">F8 Crédito</span>
+                    </button>
+
+                    <button type="button"
+                        @click="selecionarPagamento('cartao_debito')"
+                        wire:click="$set('formaPagamento', 'cartao_debito')"
+                        class="pdv-payment-btn {{ $formaPagamento === 'cartao_debito' ? 'pdv-payment-active' : 'pdv-payment-default' }}">
+                        <span class="text-xl">💳</span>
+                        <span class="text-[10px] font-black uppercase">F9 Débito</span>
+                    </button>
+
+                    <button type="button"
+                        @click="selecionarPagamento('pix')"
+                        wire:click="$set('formaPagamento', 'pix')"
+                        class="pdv-payment-btn {{ $formaPagamento === 'pix' ? 'pdv-payment-active' : 'pdv-payment-default' }}">
+                        <span class="text-xl">📱</span>
+                        <span class="text-[10px] font-black uppercase">F10 PIX</span>
                     </button>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    {{-- MODAL DE PAGAMENTO ESTILO MERCADO --}}
-    <div x-show="showPayment" 
-        x-trap.noscroll="showPayment" 
-        x-transition:enter="transition ease-out duration-300" 
-        x-transition:enter-start="opacity-0 scale-95" 
-        x-transition:enter-end="opacity-100 scale-100" 
-        x-transition:leave="transition ease-in duration-200" 
-        x-transition:leave-start="opacity-100 scale-100" 
-        x-transition:leave-end="opacity-0 scale-95"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md" style="display: none;">
-        
-        <div @click.away="showPayment = false" class="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 flex flex-col max-h-[90vh]">
-            
-            {{-- Header do Modal --}}
-            <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-indigo-600 text-white">
-                <div class="flex items-center gap-4">
-                    <div class="size-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl">💰</div>
-                    <div>
-                        <h3 class="font-black text-xl uppercase tracking-tighter">Pagamento da Venda</h3>
-                        <p class="text-[10px] text-indigo-100 font-bold uppercase tracking-widest">Igual PDV de Mercado</p>
-                    </div>
-                </div>
-                <button @click="showPayment = false" class="size-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors">✕</button>
-            </div>
-
-            <div class="p-0 flex-1 overflow-hidden flex flex-col lg:flex-row">
-                
-                {{-- Lado Esquerdo: Seleção e Entrada --}}
-                <div class="lg:w-2/3 p-8 border-r border-slate-100 dark:border-slate-800 space-y-8 overflow-y-auto">
-                    
-                    {{-- Valor Total Grande --}}
-                    <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                        <div>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total a Pagar</p>
-                            <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">R$ {{ number_format($this->totalCarrinho, 2, ',', '.') }}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Faltante</p>
-                            <p class="text-3xl font-black text-indigo-600 tracking-tighter">R$ {{ number_format($pendente, 2, ',', '.') }}</p>
-                        </div>
-                    </div>
-
-                    {{-- Seleção de Forma de Pagamento --}}
-                    <div>
-                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">1. Escolha a Forma de Pagamento</p>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            @foreach([
-                                ['dinheiro', 'Dinheiro', '💵'],
-                                ['cartao_credito', 'Crédito', '💳'],
-                                ['cartao_debito', 'Débito', '💳'],
-                                ['pix', 'PIX', '📱']
-                            ] as [$val, $label, $icon])
-                            <button wire:click="$set('formaPagamento', '{{ $val }}')"
-                                @click="$nextTick(() => document.getElementById('input-valor-pagamento').focus())"
-                                class="p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-2
-                                    {{ $formaPagamento === $val 
-                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 shadow-lg shadow-indigo-600/10' 
-                                        : 'border-slate-50 dark:border-slate-800 hover:border-indigo-200 text-slate-400' }}">
-                                <span class="text-3xl">{{ $icon }}</span>
-                                <span class="text-[10px] font-black uppercase tracking-widest">{{ $label }}</span>
-                            </button>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    {{-- Entrada de Valor --}}
-                    <div class="pt-8 border-t border-slate-100 dark:border-slate-800">
-                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">2. Informe o Valor e Confirme</p>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <div class="flex-1 relative">
-                                <span class="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xl">R$</span>
-                                <input type="number" 
-                                    id="input-valor-pagamento"
-                                    wire:model.live="valorPagamento" 
-                                    wire:keydown.enter="adicionarPagamento"
-                                    step="0.01"
-                                    placeholder="0,00"
-                                    class="w-full pl-14 pr-6 py-6 bg-slate-100 dark:bg-slate-800 border-none rounded-3xl font-black text-3xl focus:ring-4 focus:ring-indigo-500/20 outline-none transition-all">
-                            </div>
-                            <button wire:click="adicionarPagamento" 
-                                @if(empty($carrinho) || $valorPagamento <= 0) disabled @endif
-                                class="px-10 py-6 bg-indigo-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-30">
-                                Confirmar [Enter]
-                            </button>
-                        </div>
-                        @if($valorPagamento > $pendente && $formaPagamento === 'dinheiro')
-                            <p class="mt-3 text-center text-sm font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-800">
-                                💰 Troco Estimado: R$ {{ number_format($valorPagamento - $pendente, 2, ',', '.') }}
-                            </p>
-                        @endif
-                    </div>
+                {{-- Valor --}}
+                <div>
+                    <label class="text-[10px] font-black uppercase text-ink-500">Valor recebido</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="valor-pagamento"
+                        x-ref="valorPagamento"
+                        x-model="valorPagamentoLocal"
+                        @keydown.enter.prevent="adicionarPagamentoPeloTeclado()"
+                        class="w-full mt-1 px-3 py-3 border-2 border-gray-200 dark:border-ink-700 rounded-xl text-center font-black text-2xl focus:border-primary-500 outline-none transition-all bg-white dark:bg-ink-900"
+                        placeholder="0,00"
+                    >
                 </div>
 
-                {{-- Lado Direito: Resumo de Pagamentos --}}
-                <div class="lg:w-1/3 bg-slate-50/50 dark:bg-black/20 p-8 flex flex-col">
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6">Pagamentos Inseridos</p>
-                    
-                    <div class="flex-1 space-y-3 overflow-y-auto pr-2 scrollbar-thin">
+                <button type="button"
+                    @click="adicionarPagamentoPeloTeclado()"
+                    @if(empty($carrinho)) disabled @endif
+                    class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-black text-xs uppercase tracking-wider hover:from-amber-600 hover:to-orange-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    ➕ Adicionar Pagamento / Enter
+                </button>
+
+                {{-- Pagamentos --}}
+                <div class="space-y-1.5">
+                    <p class="text-[10px] uppercase font-black text-ink-400">Pagamentos adicionados</p>
+
+                    <div class="space-y-1.5">
                         @forelse($pagamentos as $index => $pag)
-                        <div class="flex items-center justify-between bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 animate-in">
-                            <div class="flex items-center gap-3">
-                                <span class="text-2xl">{{ $pag['forma'] === 'dinheiro' ? '💵' : ($pag['forma'] === 'pix' ? '📱' : '💳') }}</span>
-                                <div>
-                                    <p class="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">{{ str_replace('_', ' ', $pag['forma']) }}</p>
-                                    <p class="font-black text-slate-800 dark:text-slate-100">R$ {{ number_format($pag['valor'], 2, ',', '.') }}</p>
+                            <div class="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-2 py-1.5">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span>{{ $pag['forma'] === 'dinheiro' ? '💰' : ($pag['forma'] === 'pix' ? '📱' : '💳') }}</span>
+                                    <span class="text-xs font-bold capitalize truncate">{{ str_replace('_', ' ', $pag['forma']) }}</span>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-black text-green-700 dark:text-green-400">R$ {{ number_format($pag['valor'], 2, ',', '.') }}</span>
+                                    <button wire:click="removerPagamento({{ $index }})"
+                                        class="text-red-500 hover:text-red-700 text-lg leading-none focus:outline-none focus:ring-2 focus:ring-red-500 rounded px-1"
+                                        title="Remover pagamento">×</button>
                                 </div>
                             </div>
-                            <button wire:click="removerPagamento({{ $index }})" class="size-8 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-colors">✕</button>
-                        </div>
                         @empty
-                        <div class="h-full flex flex-col items-center justify-center opacity-20 py-10">
-                            <span class="text-5xl mb-4">💳</span>
-                            <p class="text-[10px] font-black uppercase tracking-widest text-center">Aguardando<br>Pagamentos</p>
-                        </div>
+                            <div class="text-center text-xs text-ink-400 py-3 border border-dashed border-gray-200 dark:border-ink-700 rounded-lg">
+                                Nenhum pagamento adicionado
+                            </div>
                         @endforelse
-                    </div>
-
-                    {{-- Resumo Financeiro Final --}}
-                    <div class="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700 space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Já Pago</span>
-                            <span class="font-black text-emerald-600">R$ {{ number_format($totalPago, 2, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between items-end">
-                            <span class="text-xs font-black uppercase text-slate-800 dark:text-slate-200">Restante</span>
-                            <span class="text-3xl font-black {{ $pendente > 0 ? 'text-rose-500' : 'text-emerald-500' }} tracking-tighter">
-                                R$ {{ number_format($pendente, 2, ',', '.') }}
-                            </span>
-                        </div>
                     </div>
                 </div>
             </div>
 
-            {{-- Footer com Botão de Finalização --}}
-            <div class="p-8 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
-                <button wire:click="finalizarVenda" 
+            {{-- Ações finais fixas --}}
+            <div class="shrink-0 border-t border-gray-200 dark:border-ink-700 p-3 bg-gray-50 dark:bg-ink-800/60 space-y-2">
+                @if($modoComanda && $mesa)
+                    <button wire:click="salvarComanda"
+                        @if(empty($carrinho)) disabled @endif
+                        class="w-full py-2.5 border-2 border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        💾 Salvar Mesa ({{ $mesa }})
+                    </button>
+                @endif
+
+                <button wire:click="finalizarVenda"
+                    data-finalizar-venda="true"
                     @if(empty($carrinho) || $pendente > 0) disabled @endif
-                    class="w-full py-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[2rem] font-black text-lg uppercase tracking-widest shadow-2xl shadow-emerald-600/30 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center gap-3">
-                    @if($pendente > 0)
-                        <span>Aguardando Pagamento Total...</span>
-                    @else
-                        <span>✅ FINALIZAR VENDA E IMPRIMIR</span>
-                    @endif
+                    class="w-full py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-lg transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                    ✅ Finalizar Venda / Ctrl+Enter
                 </button>
+
+                @if($pendente > 0)
+                    <p class="text-center text-[11px] text-amber-600 font-medium">
+                        Falta R$ {{ number_format($pendente, 2, ',', '.') }} para finalizar.
+                    </p>
+                @else
+                    @if(!empty($carrinho))
+                        <p class="text-center text-[11px] text-green-600 font-medium">
+                            Pagamento completo. Pode finalizar.
+                        </p>
+                    @endif
+                @endif
             </div>
-        </div>
+        </section>
     </div>
 
-    {{-- MODAL PARA NF NA FINALIZAÇÃO — CÓPIA EXATA DO CÓDIGO FUNCIONAL --}}
+    {{-- MODAL PARA NF NA FINALIZAÇÃO --}}
     @if($mostrarModalNF)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div class="bg-white dark:bg-ink-900 rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all animate-in zoom-in-95 duration-200">
@@ -499,6 +519,7 @@
 
                         <input type="text"
                             wire:model="cpfCnpjNF"
+                            autocomplete="off"
                             class="w-full px-4 py-2.5 border border-gray-200 dark:border-ink-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500 transition-all"
                             placeholder="000.000.000-00 ou 00.000.000/0000-00">
 
@@ -514,6 +535,7 @@
 
                         <input type="text"
                             wire:model="nomeClienteNF"
+                            autocomplete="off"
                             class="w-full px-4 py-2.5 border border-gray-200 dark:border-ink-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500 transition-all"
                             placeholder="Nome completo">
 
@@ -524,14 +546,19 @@
                 </div>
 
                 <div class="flex justify-end gap-3 mt-6">
-                    <button wire:click="finalizarSemNF"
-                        class="px-5 py-2.5 border border-gray-300 dark:border-ink-600 rounded-xl text-ink-700 dark:text-ink-300 hover:bg-gray-50 dark:hover:bg-ink-800 transition-all">
+                    <button type="button"
+                        wire:click="finalizarSemNF"
+                        class="px-5 py-2.5 border border-gray-300 dark:border-ink-600 rounded-xl text-ink-700 dark:text-ink-300 hover:bg-gray-50 dark:hover:bg-ink-800 transition-all focus:outline-none focus:ring-2 focus:ring-ink-500">
                         Não emitir
                     </button>
 
-                    <button wire:click="emitirNotaDaVenda"
-                        class="px-5 py-2.5 bg-gradient-to-r from-ink-800 to-ink-900 text-white rounded-xl font-medium hover:shadow-lg transition-all">
-                        Emitir Nota
+                    <button type="button"
+                        wire:click="emitirNotaDaVenda"
+                        wire:loading.attr="disabled"
+                        wire:target="emitirNotaDaVenda"
+                        class="px-5 py-2.5 bg-gradient-to-r from-ink-800 to-ink-900 text-white rounded-xl font-medium hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-ink-500 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="emitirNotaDaVenda">Emitir Nota</span>
+                        <span wire:loading wire:target="emitirNotaDaVenda">Emitindo...</span>
                     </button>
                 </div>
             </div>
@@ -540,22 +567,284 @@
 
     @push('scripts')
         <style>
-            .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
-            .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-            .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-            .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; }
-            
-            @keyframes zoom-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-            .animate-in { animation: zoom-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-            
-            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+            .pdv-kbd {
+                padding: 0.18rem 0.42rem;
+                font-size: 0.68rem;
+                line-height: 1;
+                font-weight: 800;
+                border-radius: 0.4rem;
+                background: #e5e7eb;
+                color: #111827;
+                box-shadow: inset 0 -1px 0 rgba(0,0,0,.08);
+            }
+
+            .dark .pdv-kbd {
+                background: #27272a;
+                color: #f4f4f5;
+            }
+
+            .pdv-shortcut-text {
+                font-size: 0.68rem;
+                color: #6b7280;
+                white-space: nowrap;
+            }
+
+            .pdv-separator {
+                width: 1px;
+                height: 0.9rem;
+                background: #d1d5db;
+            }
+
+            .dark .pdv-separator {
+                background: #3f3f46;
+            }
+
+            .pdv-payment-btn {
+                display: flex;
+                min-height: 4.1rem;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.25rem;
+                border-radius: 0.75rem;
+                border-width: 2px;
+                padding: 0.45rem;
+                transition: all .15s ease;
+            }
+
+            .pdv-payment-default {
+                border-color: #e5e7eb;
+                background: #fff;
+                color: #374151;
+            }
+
+            .pdv-payment-default:hover {
+                border-color: #a5b4fc;
+                background: #f9fafb;
+            }
+
+            .dark .pdv-payment-default {
+                border-color: #3f3f46;
+                background: #18181b;
+                color: #d4d4d8;
+            }
+
+            .pdv-payment-active {
+                border-color: rgb(79 70 229);
+                background: rgb(238 242 255);
+                color: rgb(79 70 229);
+                box-shadow: 0 8px 18px rgba(79, 70, 229, .15);
+            }
+
+            .dark .pdv-payment-active {
+                background: rgba(79, 70, 229, .16);
+                color: #a5b4fc;
+            }
+
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 10px;
+            }
+
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background: #c1c1c1;
+                border-radius: 10px;
+            }
+
+            .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+                background: #a1a1a1;
+            }
+
+            .dark .scrollbar-thin::-webkit-scrollbar-track {
+                background: #1a1a1a;
+            }
+
+            .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+                background: #4a4a4a;
+            }
+
+            @keyframes zoom-in {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+
+            .animate-in {
+                animation: zoom-in 0.2s ease-out;
+            }
+
+            @media (max-height: 760px) and (min-width: 1280px) {
+                .pdv-payment-btn {
+                    min-height: 3.4rem;
+                    padding: 0.3rem;
+                }
+            }
         </style>
+
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                setTimeout(() => document.getElementById('campo-codigo')?.focus(), 100);
-                document.addEventListener('focar-codigo', () => document.getElementById('campo-codigo')?.focus());
-            });
+            function pdvTelaUnica() {
+                return {
+                    valorPagamentoLocal: '',
+
+                    init() {
+                        this.$nextTick(() => {
+                            this.focarCampo('campo-codigo');
+                        });
+
+                        if (!window.__pdvTelaUnicaAtalhosRegistrados) {
+                            window.__pdvTelaUnicaAtalhosRegistrados = true;
+                            document.addEventListener('keydown', (e) => this.handleKeydown(e));
+                        }
+
+                        document.addEventListener('focar-codigo', () => {
+                            this.focarCampo('campo-codigo');
+                        });
+                    },
+
+                    focarCampo(id) {
+                        setTimeout(() => {
+                            const campo = document.getElementById(id);
+                            if (campo) {
+                                campo.focus();
+                                if (typeof campo.select === 'function') campo.select();
+                            }
+                        }, 60);
+                    },
+
+                    selecionarPagamento(forma) {
+                        this.$wire.set('formaPagamento', forma);
+                        this.focarCampo('valor-pagamento');
+                    },
+
+                    parseValorPagamento(valor) {
+                        let texto = String(valor ?? '').trim();
+
+                        if (!texto) return 0;
+
+                        // Aceita 10, 10.50, 10,50 e 1.234,56
+                        texto = texto.replace(/[^0-9,.-]/g, '');
+
+                        if (texto.includes(',')) {
+                            texto = texto.replace(/\./g, '').replace(',', '.');
+                        }
+
+                        return Number(texto);
+                    },
+
+                    adicionarPagamentoPeloTeclado() {
+                        const input = document.getElementById('valor-pagamento');
+                        const valor = this.parseValorPagamento(this.valorPagamentoLocal || input?.value);
+
+                        if (!valor || valor <= 0) {
+                            this.focarCampo('valor-pagamento');
+                            return;
+                        }
+
+                        this.$wire.set('valorPagamento', valor)
+                            .then(() => this.$wire.call('adicionarPagamento'))
+                            .then(() => {
+                                this.valorPagamentoLocal = '';
+                                if (input) input.value = '';
+                                this.focarCampo('valor-pagamento');
+                            });
+                    },
+
+                    finalizarVendaPeloTeclado() {
+                        const botao = document.querySelector('[data-finalizar-venda="true"]');
+                        if (botao && !botao.disabled) {
+                            botao.click();
+                        }
+                    },
+
+                    handleKeydown(e) {
+                        const target = e.target;
+                        const tag = target.tagName;
+                        const isInput = tag === 'INPUT' && target.type !== 'hidden';
+                        const isSelect = tag === 'SELECT';
+                        const isTextarea = tag === 'TEXTAREA';
+
+                        if (e.ctrlKey && e.key === 'Enter') {
+                            e.preventDefault();
+                            this.finalizarVendaPeloTeclado();
+                            return;
+                        }
+
+                        if (e.key === 'F2') {
+                            e.preventDefault();
+                            this.focarCampo('campo-codigo');
+                            return;
+                        }
+
+                        if (e.key === 'F3') {
+                            e.preventDefault();
+                            this.focarCampo('campo-busca');
+                            return;
+                        }
+
+                        if (e.key === 'F4') {
+                            e.preventDefault();
+                            this.focarCampo('campo-quantidade');
+                            return;
+                        }
+
+                        if (e.key === 'F5') {
+                            e.preventDefault();
+                            this.focarCampo('valor-pagamento');
+                            return;
+                        }
+
+                        if (e.key === 'F6') {
+                            e.preventDefault();
+                            if (confirm('Nova venda?')) {
+                                this.$wire.set('mesa', '');
+                                this.$wire.set('modoComanda', false);
+                                this.$wire.set('comandaId', null);
+                                this.$wire.call('limparCarrinho');
+                                this.focarCampo('campo-codigo');
+                            }
+                            return;
+                        }
+
+                        if (e.key === 'F7') {
+                            e.preventDefault();
+                            this.selecionarPagamento('dinheiro');
+                            return;
+                        }
+
+                        if (e.key === 'F8') {
+                            e.preventDefault();
+                            this.selecionarPagamento('cartao_credito');
+                            return;
+                        }
+
+                        if (e.key === 'F9') {
+                            e.preventDefault();
+                            this.selecionarPagamento('cartao_debito');
+                            return;
+                        }
+
+                        if (e.key === 'F10') {
+                            e.preventDefault();
+                            this.selecionarPagamento('pix');
+                            return;
+                        }
+
+                        if (e.key === 'Escape') {
+                            e.preventDefault();
+                            this.focarCampo('campo-codigo');
+                            return;
+                        }
+
+                        if (isInput || isSelect || isTextarea) {
+                            return;
+                        }
+                    }
+                }
+            }
         </script>
     @endpush
 </div>

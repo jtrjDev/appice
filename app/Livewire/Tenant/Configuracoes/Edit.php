@@ -3,9 +3,11 @@
 namespace App\Livewire\Tenant\Configuracoes;
 
 use App\Models\Tenant\Configuracao;
+use App\Models\Tenant\Categoria;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Livewire\Traits\WithTenancy;
 
 class Edit extends Component
@@ -13,7 +15,7 @@ class Edit extends Component
     use WithFileUploads, WithTenancy;
 
     public $configuracaoId;
-    
+
     // Dados da Empresa
     public $razao_social = '';
     public $nome_fantasia = '';
@@ -21,7 +23,7 @@ class Edit extends Component
     public $inscricao_estadual = '';
     public $inscricao_municipal = '';
     public $rg = '';
-    
+
     // Endereço
     public $cep = '';
     public $endereco = '';
@@ -30,48 +32,59 @@ class Edit extends Component
     public $bairro = '';
     public $cidade = '';
     public $estado = '';
-    
+
     // Contato
     public $telefone = '';
     public $whatsapp = '';
     public $email_empresa = '';
     public $site = '';
-    
+
     // Logo
     public $logo;
     public $logoPreview;
     public $logoAtual;
-    
+
     // Configurações NF
     public $ultimo_numero_nf = '';
     public $numero_serie_nf = '';
     public $ambiente_nf = 'homologacao';
-    public $emitir_nf_automatico = false; // NOVO CAMPO
-    
+    public $emitir_nf_automatico = false;
+    public $focus_token = '';
+
+    // NOVOS CAMPOS
+    public $tipo_negocio = 'lanchonete';
+    public $permite_fracionamento = false;
+    public $permite_meia_porcao = false;
+    public $tipo_venda_padrao = 'unidade';
+    public $unidade_medida_padrao = 'UN';
+
     // Certificado Digital
     public $certificado;
     public $certificado_senha = '';
     public $certificado_validade = '';
     public $certificadoAtual;
-    
+
     // Configurações Cupom
     public $cabecalho_cupom = '';
     public $rodape_cupom = '';
     public $exibir_logo_cupom = true;
     public $tema_cupom = 'padrao';
-    
+
     // Configurações Fiscais
     public $regime_tributario = 'simples_nacional';
     public $codigo_atividade = '';
     public $codigo_municipio = '';
     public $codigo_pais = '1058';
-    
+
     // Webhooks
     public $webhook_nfe = '';
     public $webhook_nfse = '';
 
     // Aba ativa
     public $activeTab = 'empresa';
+
+    // LISTENER para quando o tipo_negocio mudar
+    protected $listeners = ['tipoNegocioChanged' => 'atualizarCategorias'];
 
     protected $rules = [
         // Empresa
@@ -81,7 +94,7 @@ class Edit extends Component
         'inscricao_estadual' => 'nullable|string|max:20',
         'inscricao_municipal' => 'nullable|string|max:20',
         'rg' => 'nullable|string|max:20',
-        
+
         // Endereço
         'cep' => 'required|string|max:10',
         'endereco' => 'required|string|max:255',
@@ -90,34 +103,42 @@ class Edit extends Component
         'bairro' => 'required|string|max:255',
         'cidade' => 'required|string|max:255',
         'estado' => 'required|string|size:2',
-        
+
         // Contato
         'telefone' => 'nullable|string|max:20',
         'whatsapp' => 'required|string|max:20',
         'email_empresa' => 'required|email|max:255',
         'site' => 'nullable|url|max:255',
-        
+
         // NF
         'ultimo_numero_nf' => 'nullable|string|max:20',
         'numero_serie_nf' => 'nullable|string|max:10',
         'ambiente_nf' => 'required|in:homologacao,producao',
         'emitir_nf_automatico' => 'boolean',
-        
+        'focus_token' => 'nullable|string|max:255',
+
+        // NOVOS CAMPOS
+        'tipo_negocio' => 'required|in:sorveteria,pizzaria,lanchonete,restaurante,acai,hamburgueria',
+        'permite_fracionamento' => 'boolean',
+        'permite_meia_porcao' => 'boolean',
+        'tipo_venda_padrao' => 'required|in:unidade,peso,fracionado',
+        'unidade_medida_padrao' => 'required|string|max:5',
+
         // Certificado
         'certificado_senha' => 'nullable|string|max:255',
-        
+
         // Cupom
         'cabecalho_cupom' => 'nullable|string',
         'rodape_cupom' => 'nullable|string',
         'exibir_logo_cupom' => 'boolean',
         'tema_cupom' => 'required|string|max:50',
-        
+
         // Fiscal
         'regime_tributario' => 'required|in:simples_nacional,lucro_presumido,lucro_real,mei',
         'codigo_atividade' => 'nullable|string|max:20',
         'codigo_municipio' => 'nullable|string|max:20',
         'codigo_pais' => 'nullable|string|max:10',
-        
+
         // Webhook
         'webhook_nfe' => 'nullable|url|max:255',
         'webhook_nfse' => 'nullable|url|max:255',
@@ -131,19 +152,54 @@ class Edit extends Component
         'email_empresa.required' => 'O e-mail da empresa é obrigatório.',
     ];
 
+    // Método chamado quando tipo_negocio é alterado
+    public function updatedTipoNegocio($value)
+    {
+        $this->criarCategoriasPadrao($value);
+    }
+ // Método para criar categorias padrão
+    private function criarCategoriasPadrao($tipoNegocio)
+    {
+        $categoriasPadrao = match($tipoNegocio) {
+            'sorveteria' => ['Sorvetes', 'Casquinhas', 'Milkshakes', 'Açaí', 'Picolés', 'Bebidas'],
+            'pizzaria' => ['Pizzas', 'Bebidas', 'Porções', 'Sobremesas', 'Calzones'],
+            'lanchonete' => ['Lanches', 'Bebidas', 'Porções', 'Sobremesas', 'Combinados'],
+            'acai' => ['Açaí', 'Sorvetes', 'Frutos', 'Adicionais', 'Bebidas'],
+            'restaurante' => ['Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas', 'Entradas'],
+            'hamburgueria' => ['Hambúrgueres', 'Porções', 'Bebidas', 'Sobremesas', 'Combinados'],
+            default => ['Produtos']
+        };
+        
+        // Criar categorias se não existirem
+        foreach($categoriasPadrao as $nome) {
+            Categoria::firstOrCreate(
+                ['nome' => $nome],
+                [
+                    'slug' => Str::slug($nome),
+                    'ativo' => true,
+                    'ordem' => 0
+                ]
+            );
+        }
+        
+        // Opcional: mostrar mensagem de sucesso
+        $this->dispatch('toast', type: 'success', message: 'Categorias padrão criadas para ' . ucfirst($tipoNegocio));
+    }
+
     public function mount()
     {
-        // Pegar o ID da URL (igual ao cliente)
         $this->configuracaoId = request()->route('configuracao');
-        
-        // Buscar a configuração dentro do tenant
         $configuracao = Configuracao::find($this->configuracaoId);
-        
+
         if (!$configuracao) {
             session()->flash('error', 'Configuração não encontrada.');
             return redirect()->route('tenant.configuracoes.index');
         }
-        
+        // Se não houver categorias, criar as padrão
+        if (Categoria::count() == 0) {
+            $this->criarCategoriasPadrao($configuracao->tipo_negocio);
+        }
+
         // Carregar dados da empresa
         $this->razao_social = $configuracao->razao_social;
         $this->nome_fantasia = $configuracao->nome_fantasia;
@@ -151,7 +207,7 @@ class Edit extends Component
         $this->inscricao_estadual = $configuracao->inscricao_estadual;
         $this->inscricao_municipal = $configuracao->inscricao_municipal;
         $this->rg = $configuracao->rg;
-        
+
         // Endereço
         $this->cep = $configuracao->cep;
         $this->endereco = $configuracao->endereco;
@@ -160,39 +216,47 @@ class Edit extends Component
         $this->bairro = $configuracao->bairro;
         $this->cidade = $configuracao->cidade;
         $this->estado = $configuracao->estado;
-        
+
         // Contato
         $this->telefone = $configuracao->telefone;
         $this->whatsapp = $configuracao->whatsapp;
         $this->email_empresa = $configuracao->email_empresa;
         $this->site = $configuracao->site;
-        
+
         // Logo
         $this->logoAtual = $configuracao->logo;
-        
+
         // NF
         $this->ultimo_numero_nf = $configuracao->ultimo_numero_nf;
         $this->numero_serie_nf = $configuracao->numero_serie_nf;
         $this->ambiente_nf = $configuracao->ambiente_nf;
         $this->emitir_nf_automatico = $configuracao->emitir_nf_automatico ?? false;
-        
+        $this->focus_token = $configuracao->focus_token;
+
+        // NOVOS CAMPOS
+        $this->tipo_negocio = $configuracao->tipo_negocio ?? 'lanchonete';
+        $this->permite_fracionamento = $configuracao->permite_fracionamento ?? false;
+        $this->permite_meia_porcao = $configuracao->permite_meia_porcao ?? false;
+        $this->tipo_venda_padrao = $configuracao->tipo_venda_padrao ?? 'unidade';
+        $this->unidade_medida_padrao = $configuracao->unidade_medida_padrao ?? 'UN';
+
         // Certificado
         $this->certificadoAtual = $configuracao->certificado_path;
         $this->certificado_senha = $configuracao->certificado_senha;
         $this->certificado_validade = $configuracao->certificado_validade?->format('Y-m-d');
-        
+
         // Cupom
         $this->cabecalho_cupom = $configuracao->cabecalho_cupom;
         $this->rodape_cupom = $configuracao->rodape_cupom;
         $this->exibir_logo_cupom = $configuracao->exibir_logo_cupom;
         $this->tema_cupom = $configuracao->tema_cupom;
-        
+
         // Fiscal
         $this->regime_tributario = $configuracao->regime_tributario;
         $this->codigo_atividade = $configuracao->codigo_atividade;
         $this->codigo_municipio = $configuracao->codigo_municipio;
         $this->codigo_pais = $configuracao->codigo_pais;
-        
+
         // Webhooks
         $this->webhook_nfe = $configuracao->webhook_nfe;
         $this->webhook_nfse = $configuracao->webhook_nfse;
@@ -206,7 +270,7 @@ class Edit extends Component
     public function buscarCep()
     {
         $cep = preg_replace('/[^0-9]/', '', $this->cep);
-        
+
         if (strlen($cep) != 8) {
             return;
         }
@@ -214,7 +278,7 @@ class Edit extends Component
         try {
             $response = file_get_contents("https://viacep.com.br/ws/{$cep}/json/");
             $data = json_decode($response, true);
-            
+
             if (!isset($data['erro'])) {
                 $this->endereco = $data['logradouro'] ?? '';
                 $this->bairro = $data['bairro'] ?? '';
@@ -232,7 +296,7 @@ class Edit extends Component
         $this->validate([
             'logo' => 'image|max:2048',
         ]);
-        
+
         $this->logoPreview = $this->logo->temporaryUrl();
     }
 
@@ -263,6 +327,13 @@ class Edit extends Component
                 'numero_serie_nf' => $this->numero_serie_nf,
                 'ambiente_nf' => $this->ambiente_nf,
                 'emitir_nf_automatico' => $this->emitir_nf_automatico,
+                'focus_token' => $this->focus_token,
+                // NOVOS CAMPOS
+                'tipo_negocio' => $this->tipo_negocio,
+                'permite_fracionamento' => $this->permite_fracionamento,
+                'permite_meia_porcao' => $this->permite_meia_porcao,
+                'tipo_venda_padrao' => $this->tipo_venda_padrao,
+                'unidade_medida_padrao' => $this->unidade_medida_padrao,
                 'certificado_senha' => $this->certificado_senha,
                 'cabecalho_cupom' => $this->cabecalho_cupom,
                 'rodape_cupom' => $this->rodape_cupom,
@@ -302,7 +373,6 @@ class Edit extends Component
 
             session()->flash('success', 'Configuração atualizada com sucesso!');
             return redirect()->route('tenant.configuracoes.index');
-
         } catch (\Exception $e) {
             session()->flash('error', 'Erro ao atualizar: ' . $e->getMessage());
         }

@@ -7,16 +7,17 @@
     </div>
 
     @if (session()->has('error'))
-        <div class="mb-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg">
-            <p class="text-sm text-red-600 dark:text-red-400">{{ session('error') }}</p>
+        <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {{ session('error') }}
         </div>
     @endif
 
     <form wire:submit="update">
         <div class="bg-white dark:bg-ink-900 rounded-lg border border-ink-200 dark:border-ink-800 overflow-hidden">
+
             {{-- Abas --}}
-            <div class="border-b border-ink-200 dark:border-ink-800 bg-ink-50 dark:bg-ink-800/50">
-                <nav class="flex gap-1 px-4 overflow-x-auto">
+            <div class="border-b border-ink-200 dark:border-ink-800 bg-ink-50 dark:bg-ink-800/50 overflow-x-auto">
+                <nav class="flex gap-1 px-4 min-w-max">
                     <button type="button" wire:click="$set('activeTab', 'empresa')"
                         class="px-4 py-3 text-sm font-medium transition-colors {{ $activeTab == 'empresa' ? 'border-b-2 border-ink-900 text-ink-900 dark:text-ink-50' : 'text-ink-500 hover:text-ink-700' }}">
                         🏢 Empresa
@@ -33,6 +34,10 @@
                         class="px-4 py-3 text-sm font-medium transition-colors {{ $activeTab == 'logo' ? 'border-b-2 border-ink-900 text-ink-900 dark:text-ink-50' : 'text-ink-500 hover:text-ink-700' }}">
                         🖼️ Logo
                     </button>
+                    <button type="button" wire:click="$set('activeTab', 'negocio')"
+                        class="px-4 py-3 text-sm font-medium transition-colors {{ $activeTab == 'negocio' ? 'border-b-2 border-ink-900 text-ink-900 dark:text-ink-50' : 'text-ink-500 hover:text-ink-700' }}">
+                        🏪 Tipo de Negócio
+                    </button>
                     <button type="button" wire:click="$set('activeTab', 'nf')"
                         class="px-4 py-3 text-sm font-medium transition-colors {{ $activeTab == 'nf' ? 'border-b-2 border-ink-900 text-ink-900 dark:text-ink-50' : 'text-ink-500 hover:text-ink-700' }}">
                         📄 Nota Fiscal
@@ -43,20 +48,22 @@
                     </button>
                     <button type="button" wire:click="$set('activeTab', 'cupom')"
                         class="px-4 py-3 text-sm font-medium transition-colors {{ $activeTab == 'cupom' ? 'border-b-2 border-ink-900 text-ink-900 dark:text-ink-50' : 'text-ink-500 hover:text-ink-700' }}">
-                        🧾 Cupom Fiscal
+                        🧾 Cupom
                     </button>
                     <button type="button" wire:click="$set('activeTab', 'fiscal')"
                         class="px-4 py-3 text-sm font-medium transition-colors {{ $activeTab == 'fiscal' ? 'border-b-2 border-ink-900 text-ink-900 dark:text-ink-50' : 'text-ink-500 hover:text-ink-700' }}">
-                        ⚖️ Regime Fiscal
+                        ⚖️ Fiscal
                     </button>
                     <button type="button" wire:click="$set('activeTab', 'webhook')"
                         class="px-4 py-3 text-sm font-medium transition-colors {{ $activeTab == 'webhook' ? 'border-b-2 border-ink-900 text-ink-900 dark:text-ink-50' : 'text-ink-500 hover:text-ink-700' }}">
-                        🔗 Webhooks
+                        🔗 Webhook
                     </button>
                 </nav>
             </div>
 
             <div class="p-6 space-y-6">
+                {{-- Conteúdo das abas --}}
+
                 {{-- Aba: Empresa --}}
                 @if($activeTab == 'empresa')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -192,6 +199,131 @@
                 </div>
                 @endif
 
+                {{-- Aba: Tipo de Negócio --}}
+                @if($activeTab == 'negocio')
+                <div class="space-y-6">
+                    {{-- Seleção do tipo --}}
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-3">Tipo de Estabelecimento</label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-ink-50 transition-all {{ $tipo_negocio == 'sorveteria' ? 'border-primary-500 bg-primary-50' : '' }}">
+                                <input type="radio" wire:model="tipo_negocio" value="sorveteria" class="hidden">
+                                <span class="text-2xl">🍦</span>
+                                <div>
+                                    <p class="font-semibold text-sm">Sorveteria</p>
+                                    <p class="text-xs text-ink-500">Venda por peso, casquinhas</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-ink-50 transition-all {{ $tipo_negocio == 'pizzaria' ? 'border-primary-500 bg-primary-50' : '' }}">
+                                <input type="radio" wire:model="tipo_negocio" value="pizzaria" class="hidden">
+                                <span class="text-2xl">🍕</span>
+                                <div>
+                                    <p class="font-semibold text-sm">Pizzaria</p>
+                                    <p class="text-xs text-ink-500">Meia pizza, tamanhos, bordas</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-ink-50 transition-all {{ $tipo_negocio == 'lanchonete' ? 'border-primary-500 bg-primary-50' : '' }}">
+                                <input type="radio" wire:model="tipo_negocio" value="lanchonete" class="hidden">
+                                <span class="text-2xl">🍔</span>
+                                <div>
+                                    <p class="font-semibold text-sm">Lanchonete</p>
+                                    <p class="text-xs text-ink-500">Hambúrgueres, porções</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-ink-50 transition-all {{ $tipo_negocio == 'restaurante' ? 'border-primary-500 bg-primary-50' : '' }}">
+                                <input type="radio" wire:model="tipo_negocio" value="restaurante" class="hidden">
+                                <span class="text-2xl">🍽️</span>
+                                <div>
+                                    <p class="font-semibold text-sm">Restaurante</p>
+                                    <p class="text-xs text-ink-500">Refeições, pratos feitos</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-ink-50 transition-all {{ $tipo_negocio == 'acai' ? 'border-primary-500 bg-primary-50' : '' }}">
+                                <input type="radio" wire:model="tipo_negocio" value="acai" class="hidden">
+                                <span class="text-2xl">🥣</span>
+                                <div>
+                                    <p class="font-semibold text-sm">Açaí & Bowl</p>
+                                    <p class="text-xs text-ink-500">Açaí, frutas, granola</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-ink-50 transition-all {{ $tipo_negocio == 'hamburgueria' ? 'border-primary-500 bg-primary-50' : '' }}">
+                                <input type="radio" wire:model="tipo_negocio" value="hamburgueria" class="hidden">
+                                <span class="text-2xl">🍔</span>
+                                <div>
+                                    <p class="font-semibold text-sm">Hamburgueria</p>
+                                    <p class="text-xs text-ink-500">Artesanais, combos</p>
+                                </div>
+                            </label>
+                        </div>
+                        @error('tipo_negocio') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Configurações específicas --}}
+                    <div class="border-t pt-4">
+                        <h3 class="text-md font-semibold mb-3">Configurações de Venda</h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Tipo de Venda Padrão</label>
+                                <select wire:model="tipo_venda_padrao" class="w-full px-3 py-2 border rounded-lg">
+                                    <option value="unidade">Por Unidade</option>
+                                    <option value="peso">Por Peso (kg)</option>
+                                    <option value="fracionado">Fracionado (meio, etc)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Unidade de Medida Padrão</label>
+                                <select wire:model="unidade_medida_padrao" class="w-full px-3 py-2 border rounded-lg">
+                                    <option value="UN">Unidade</option>
+                                    <option value="KG">Quilograma</option>
+                                    <option value="G">Grama</option>
+                                    <option value="L">Litro</option>
+                                    <option value="ML">Mililitro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+    <button type="button" 
+        wire:click="criarCategoriasPadrao('{{ $tipo_negocio }}')"
+        class="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm">
+        Criar Categorias Padrão
+    </button>
+    <p class="text-xs text-ink-500 mt-1">Cria as categorias recomendadas para este tipo de negócio</p>
+</div>
+
+                        <div class="mt-4 space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium text-sm">Permitir fracionamento</p>
+                                    <p class="text-xs text-ink-500">Vender por pedaço/fracionado</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" wire:model="permite_fracionamento" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium text-sm">Permitir meia porção</p>
+                                    <p class="text-xs text-ink-500">Meia pizza, meio sorvete, etc</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" wire:model="permite_meia_porcao" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 {{-- Aba: Nota Fiscal --}}
                 @if($activeTab == 'nf')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -210,24 +342,28 @@
                             <option value="producao">✅ Produção (Real)</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Token Focus</label>
+                        <input type="text" wire:model="focus_token" class="w-full px-3 py-2 border rounded-lg" placeholder="Token da API Focus">
+                    </div>
                     <div class="col-span-2">
                         <label class="flex items-center gap-2">
                             <input type="checkbox" wire:model="emitir_nf_automatico" class="rounded">
                             <span class="text-sm text-ink-700 dark:text-ink-300">
-                                Emitir nota fiscal automaticamente ao finalizar a venda (perguntar CPF/CNPJ)
+                                Emitir nota fiscal automaticamente ao finalizar a venda
                             </span>
                         </label>
                     </div>
                 </div>
                 @endif
 
-                {{-- Aba: Certificado Digital --}}
+                {{-- Aba: Certificado --}}
                 @if($activeTab == 'certificado')
                 <div class="grid grid-cols-1 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Arquivo do Certificado (.pfx ou .p12)</label>
                         <input type="file" wire:model="certificado" accept=".pfx,.p12" class="w-full">
-                        <p class="text-xs text-ink-500 mt-1">Arquivo do certificado digital A1 (válido por 1 ano)</p>
+                        <p class="text-xs text-ink-500 mt-1">Arquivo do certificado digital A1</p>
                         @if($certificadoAtual)
                             <p class="text-xs text-ink-500 mt-1">Certificado atual: {{ basename($certificadoAtual) }}</p>
                         @endif
@@ -243,19 +379,21 @@
                 </div>
                 @endif
 
-                {{-- Aba: Cupom Fiscal --}}
+                {{-- Aba: Cupom --}}
                 @if($activeTab == 'cupom')
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Cabeçalho do Cupom</label>
-                        <textarea wire:model="cabecalho_cupom" rows="3" class="w-full px-3 py-2 border rounded-lg" placeholder="=========================================
+                        <textarea wire:model="cabecalho_cupom" rows="3" class="w-full px-3 py-2 border rounded-lg"
+                            placeholder="=========================================
           MINHA EMPRESA
           CNPJ: 00.000.000/0000-00
 ========================================="></textarea>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">Rodapé do Cupom</label>
-                        <textarea wire:model="rodape_cupom" rows="3" class="w-full px-3 py-2 border rounded-lg" placeholder="=========================================
+                        <textarea wire:model="rodape_cupom" rows="3" class="w-full px-3 py-2 border rounded-lg"
+                            placeholder="=========================================
     OBRIGADO PELA PREFERÊNCIA!
     Volte sempre!
 ========================================="></textarea>
@@ -277,7 +415,7 @@
                 </div>
                 @endif
 
-                {{-- Aba: Regime Fiscal --}}
+                {{-- Aba: Fiscal --}}
                 @if($activeTab == 'fiscal')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -304,7 +442,7 @@
                 </div>
                 @endif
 
-                {{-- Aba: Webhooks --}}
+                {{-- Aba: Webhook --}}
                 @if($activeTab == 'webhook')
                 <div class="grid grid-cols-1 gap-4">
                     <div>

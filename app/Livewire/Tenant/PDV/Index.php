@@ -30,48 +30,56 @@ class Index extends Component
     // ==========================================
     // PROPRIEDADES - MODAL DE NOTA FISCAL
     // ==========================================
-    
+
     /** @var bool Controla exibição do modal de nota fiscal */
     public $mostrarModalNF = false;
-    
+
     /** @var string CPF/CNPJ para emissão de nota */
     public $cpfCnpjNF = '';
-    
+
     /** @var string Nome do cliente para nota fiscal */
     public $nomeClienteNF = '';
-    
+    public $inscricaoEstadualNF;
+    public $telefoneNF;
+    public $enderecoNF;
+    public $numeroNF;
+    public $bairroNF;
+    public $cidadeNF;
+    public $ufNF = 'PR';
+    public $cepNF;
+
     /** @var string Tipo do documento (CPF/CNPJ) */
     public $tipoDocumentoNF = 'CPF';
-    
+
     /** @var int|null ID temporário do pedido antes de emitir NF */
     public $pedidoTempId = null;
 
     // ==========================================
     // PROPRIEDADES - OPÇÕES DO PRODUTO (PESO, MEIA, TAMANHOS, ADICIONAIS)
     // ==========================================
-    
+
     /** @var float Peso do produto (para sorveteria) */
     public $peso = 0;
-    
+
     /** @var bool Indica se é meia porção (pizza, açaí) */
     public $meiaPorcao = false;
-    
+
     /** @var string|null Tamanho selecionado do produto */
     public $tamanhoSelecionado = null;
-    
+
     /** @var array Adicionais selecionados para o produto */
     public $adicionaisSelecionados = [];
-    
+
     /** @var array Lista de tamanhos disponíveis por tipo de negócio */
     public $tamanhosDisponiveis = [];
-    
+
     /** @var array Lista de adicionais disponíveis */
     public $adicionaisDisponiveis = [];
 
     // ==========================================
     // PROPRIEDADES - VALIDAÇÃO
     // ==========================================
-    
+
     /** @var array Regras de validação para nota fiscal */
     protected $rules = [
         'cpfCnpjNF' => 'required|string|min:11|max:18',
@@ -81,79 +89,79 @@ class Index extends Component
     // ==========================================
     // PROPRIEDADES - FILTROS E BUSCA
     // ==========================================
-    
+
     /** @var int|null Categoria selecionada para filtro */
     public ?int $categoriaSelecionada = null;
-    
+
     /** @var string Termo de busca de produtos */
     public string $busca = '';
-    
+
     /** @var string Código do produto para busca rápida */
     public string $codigoProduto = '';
-    
+
     /** @var float Quantidade padrão (suporta até 3 casas decimais) */
     public float $quantidadeInput = 1;
 
     // ==========================================
     // PROPRIEDADES - CARRINHO
     // ==========================================
-    
+
     /** @var array Itens adicionados ao carrinho */
     public array $carrinho = [];
 
     // ==========================================
     // PROPRIEDADES - COMANDA / MESA
     // ==========================================
-    
+
     /** @var int|null ID da comanda ativa */
     public ?int $comandaId = null;
-    
+
     /** @var bool Indica se está em modo comanda (mesa) */
     public bool $modoComanda = false;
 
     // ==========================================
     // PROPRIEDADES - VENDA
     // ==========================================
-    
+
     /** @var string|null Número da mesa (vem da URL) */
     #[Url]
     public ?string $mesa = null;
-    
+
     /** @var string Número da comanda */
     public string $comanda = '';
-    
+
     /** @var int|null ID do cliente selecionado */
     public ?int $clienteId = null;
-    
+
     /** @var string Observações da venda */
     public string $observacao = '';
 
     // ==========================================
     // PROPRIEDADES - PAGAMENTO
     // ==========================================
-    
+
     /** @var bool Controla exibição do modal de pagamento */
     public bool $mostrarPagamento = false;
-    
+
     /** @var array Lista de pagamentos realizados (split) */
     public array $pagamentos = [];
-    
+
     /** @var float Valor pendente a pagar */
     public float $valorPendente = 0;
-    
+
     /** @var float Valor atual sendo pago */
     public float $valorPagamento = 0;
-    
+
     /** @var string Forma de pagamento selecionada */
     public string $formaPagamento = 'dinheiro';
-    
+
     /** @var int|null ID do usuário logado no tenant */
     public ?int $tenantUserId = null;
 
     // ==========================================
     // PROPRIEDADES - CONFIGURAÇÕES DO TENANT
     // ==========================================
-    
+
     /** @var object|null Dados de configuração do tenant */
     public $configuracao;
 
@@ -168,7 +176,7 @@ class Index extends Component
     // ==========================================
     // MÉTODOS - INICIALIZAÇÃO
     // ==========================================
-    
+
     /**
      * Inicializa o componente PDV
      * Carrega sessão, configurações do tenant e opções de produto
@@ -177,17 +185,17 @@ class Index extends Component
     {
         // Busca o ID do usuário logado no tenant
         $this->tenantUserId = \App\Models\Tenant\User::where('email', auth()->user()->email)->value('id');
-        
+
         // Carrega carrinho da sessão
         $this->carrinho = session('pdv_carrinho', []);
-        
+
         // Reseta pagamentos
         $this->pagamentos = [];
         $this->valorPendente = 0;
         $this->valorPagamento = 0;
         $this->formaPagamento = 'dinheiro';
         $this->mostrarModalNF = false;
-        
+
         // Carrega configurações do tenant (tipo de negócio)
         $this->configuracao = Configuracao::first();
 
@@ -197,7 +205,7 @@ class Index extends Component
         } elseif ($this->configuracao && $this->configuracao->tipo_negocio == 'sorveteria') {
             $this->tamanhosDisponiveis = ['Pequeno', 'Médio', 'Grande'];
         }
-        
+
         // Adicionais padrão (futuramente podem vir do banco)
         $this->adicionaisDisponiveis = [
             ['nome' => 'Queijo extra', 'preco' => 2.00],
@@ -215,82 +223,82 @@ class Index extends Component
     }
 
     public function selecionarMetadePizza($produtoId, string $lado): void
-{
-    $produto = Produto::findOrFail($produtoId);
+    {
+        $produto = Produto::findOrFail($produtoId);
 
-    $dados = [
-        'id' => $produto->id,
-        'nome' => $produto->nome,
-        'preco' => (float) $produto->preco_atual,
-    ];
+        $dados = [
+            'id' => $produto->id,
+            'nome' => $produto->nome,
+            'preco' => (float) $produto->preco_atual,
+        ];
 
-    if ($lado === 'A') {
-        $this->pizzaMetadeA = $dados;
+        if ($lado === 'A') {
+            $this->pizzaMetadeA = $dados;
+        }
+
+        if ($lado === 'B') {
+            $this->pizzaMetadeB = $dados;
+        }
     }
 
-    if ($lado === 'B') {
-        $this->pizzaMetadeB = $dados;
-    }
-}
-
-public function limparMeiaPizza(): void
-{
-    $this->pizzaMetadeA = [];
-    $this->pizzaMetadeB = [];
-    $this->observacaoPizza = '';
-    $this->tamanhoPizza = 'media';
-    $this->regraPrecoMeiaPizza = 'maior';
-}
-
-public function adicionarMeiaPizza(): void
-{
-    if (empty($this->pizzaMetadeA) || empty($this->pizzaMetadeB)) {
-        return;
+    public function limparMeiaPizza(): void
+    {
+        $this->pizzaMetadeA = [];
+        $this->pizzaMetadeB = [];
+        $this->observacaoPizza = '';
+        $this->tamanhoPizza = 'media';
+        $this->regraPrecoMeiaPizza = 'maior';
     }
 
-    $precoA = (float) $this->pizzaMetadeA['preco'];
-    $precoB = (float) $this->pizzaMetadeB['preco'];
+    public function adicionarMeiaPizza(): void
+    {
+        if (empty($this->pizzaMetadeA) || empty($this->pizzaMetadeB)) {
+            return;
+        }
 
-    $valor = $this->regraPrecoMeiaPizza === 'media'
-        ? (($precoA + $precoB) / 2)
-        : max($precoA, $precoB);
+        $precoA = (float) $this->pizzaMetadeA['preco'];
+        $precoB = (float) $this->pizzaMetadeB['preco'];
 
-    $chave = 'meia_' . $this->pizzaMetadeA['id'] . '_' . $this->pizzaMetadeB['id'] . '_' . uniqid();
+        $valor = $this->regraPrecoMeiaPizza === 'media'
+            ? (($precoA + $precoB) / 2)
+            : max($precoA, $precoB);
 
-    $nome = 'Pizza Meio a Meio: '
-        . $this->pizzaMetadeA['nome']
-        . ' / '
-        . $this->pizzaMetadeB['nome']
-        . ' - '
-        . ucfirst($this->tamanhoPizza);
+        $chave = 'meia_' . $this->pizzaMetadeA['id'] . '_' . $this->pizzaMetadeB['id'] . '_' . uniqid();
 
-    $this->carrinho[$chave] = [
-        'id' => $chave,
-        'produto_id' => null,
-        'tipo' => 'meia_pizza',
-        'nome' => $nome,
-        'quantidade' => 1,
-        'preco' => $valor,
-        'preco_formatado' => 'R$ ' . number_format($valor, 2, ',', '.'),
-        'subtotal' => $valor,
-        'observacao' => $this->observacaoPizza,
-        'metades' => [
-            'a' => $this->pizzaMetadeA,
-            'b' => $this->pizzaMetadeB,
-        ],
-        'tamanho' => $this->tamanhoPizza,
-        'regra_preco' => $this->regraPrecoMeiaPizza,
-    ];
+        $nome = 'Pizza Meio a Meio: '
+            . $this->pizzaMetadeA['nome']
+            . ' / '
+            . $this->pizzaMetadeB['nome']
+            . ' - '
+            . ucfirst($this->tamanhoPizza);
 
-    $this->limparMeiaPizza();
+        $this->carrinho[$chave] = [
+            'id' => $chave,
+            'produto_id' => null,
+            'tipo' => 'meia_pizza',
+            'nome' => $nome,
+            'quantidade' => 1,
+            'preco' => $valor,
+            'preco_formatado' => 'R$ ' . number_format($valor, 2, ',', '.'),
+            'subtotal' => $valor,
+            'observacao' => $this->observacaoPizza,
+            'metades' => [
+                'a' => $this->pizzaMetadeA,
+                'b' => $this->pizzaMetadeB,
+            ],
+            'tamanho' => $this->tamanhoPizza,
+            'regra_preco' => $this->regraPrecoMeiaPizza,
+        ];
 
-    $this->dispatch('focar-codigo');
-}
+        $this->limparMeiaPizza();
+
+        $this->dispatch('focar-codigo');
+    }
 
     // ==========================================
     // MÉTODOS - CÁLCULOS
     // ==========================================
-    
+
     /**
      * Recalcula o valor pendente baseado nos pagamentos e comanda
      * @param bool $ajustarValorPagamento Se deve ajustar o campo valorPagamento
@@ -322,7 +330,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // PROPRIEDADES COMPUTADAS
     // ==========================================
-    
+
     /**
      * Calcula o total do carrinho
      * @return float
@@ -356,7 +364,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - CATEGORIAS
     // ==========================================
-    
+
     /**
      * Filtra produtos por categoria
      * @param int|null $categoriaId ID da categoria ou null para todos
@@ -369,7 +377,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - ADICIONAR PRODUTO
     // ==========================================
-    
+
     /**
      * Adiciona um produto ao carrinho com suas opções (peso, meia, tamanho, adicionais)
      * @param int $produtoId ID do produto
@@ -386,19 +394,19 @@ public function adicionarMeiaPizza(): void
 
         $quantidade = $quantidade ?? $this->quantidadeInput;
         $quantidade = max(0.01, (float) $quantidade);
-        
+
         $precoUnitario = $produto->preco_atual;
         $observacao = '';
         $valorAdicionais = 0;
 
         // Ajusta preço baseado nas opções selecionadas
         $precoUnitario = $this->calcularPrecoComOpcoes($produto, $precoUnitario, $observacao, $valorAdicionais);
-        
+
         // Calcula valor total do item
         $valorTotal = ($precoUnitario * $quantidade) + $valorAdicionais;
-        
+
         $chave = (string) $produtoId;
-        
+
         // Se produto já existe no carrinho, apenas incrementa
         if (isset($this->carrinho[$chave])) {
             $this->carrinho[$chave]['quantidade'] += $quantidade;
@@ -495,7 +503,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - CARRINHO
     // ==========================================
-    
+
     /**
      * Remove um produto do carrinho
      * @param int $produtoId ID do produto
@@ -563,20 +571,20 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - BUSCA POR CÓDIGO
     // ==========================================
-    
+
     /**
      * Busca produto por código ou ID e adiciona ao carrinho
      */
     public function buscarPorCodigo(): void
     {
         $codigo = trim($this->codigoProduto);
-        
+
         if (strlen($codigo) < 1) {
             return;
         }
-        
+
         $produto = Produto::where('codigo', $codigo)->first();
-        
+
         if ($produto) {
             $this->adicionarProduto($produto->id, $this->quantidadeInput);
             $this->codigoProduto = '';
@@ -590,7 +598,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - ABRIR/FECHAR PAGAMENTO
     // ==========================================
-    
+
     /**
      * Abre o modal de pagamento
      */
@@ -644,7 +652,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - PAGAMENTO (SPLIT)
     // ==========================================
-    
+
     /**
      * Adiciona um pagamento ao split
      */
@@ -729,7 +737,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - FINALIZAÇÃO DA VENDA
     // ==========================================
-    
+
     /**
      * Finaliza a venda, cria pedido e atualiza caixa
      */
@@ -802,7 +810,7 @@ public function adicionarMeiaPizza(): void
             $caixa->increment('total_credito', $totaisPagamentos->get('cartao_credito', 0));
             $caixa->increment('total_debito', $totaisPagamentos->get('cartao_debito', 0));
             $caixa->increment('total_pix', $totaisPagamentos->get('pix', 0));
-            
+
             DB::commit();
 
             // Limpa o carrinho e reseta estados
@@ -817,22 +825,24 @@ public function adicionarMeiaPizza(): void
 
             // Verifica se deve emitir nota fiscal
             $config = Configuracao::first();
-            
-            // Se já tem cliente com CPF/CNPJ, emite automaticamente
+
+            // Se já tem cliente com CPF/CNPJ, detecta o tipo automaticamente
             if ($pedido->cliente_id && $pedido->cliente && $pedido->cliente->cpf_cnpj) {
-                EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
+                $cpfCnpj = preg_replace('/[^0-9]/', '', $pedido->cliente->cpf_cnpj);
+                $tipoDocumento = strlen($cpfCnpj) === 14 ? 'CNPJ' : 'CPF';
+                // No método finalizarVenda() ou emitirNotaDaVenda()
+                // Deixe assim, NÃO use (int)
+                EmitirNotaFiscal::dispatch($pedido->id, tenant()->id, $tipoDocumento);
                 $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado! NF solicitada.");
-            } 
+            }
             // Se configurado para emitir NF, pergunta os dados
             elseif ($config && $config->emitir_nf_automatico) {
                 $this->pedidoTempId = $pedido->id;
                 $this->mostrarModalNF = true;
                 $this->toastInfo("Deseja emitir nota fiscal? Preencha os dados.");
-            } 
-            else {
+            } else {
                 $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado!");
             }
-
         } catch (\Exception $e) {
             DB::rollBack();
             $this->toastError('Erro ao finalizar venda: ' . $e->getMessage());
@@ -842,39 +852,164 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - NOTA FISCAL
     // ==========================================
-    
+
     /**
      * Emite nota fiscal após finalizar a venda (modal)
      */
     public function emitirNotaDaVenda()
-    {
-        $this->validate([
-            'cpfCnpjNF' => 'required|string|min:11|max:18',
-            'nomeClienteNF' => 'required|string|min:3',
-        ]);
-        
-        $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF);
-        
-        // Cria ou busca cliente
-        $cliente = Cliente::updateOrCreate(
-            ['cpf_cnpj' => $cpfCnpj],
-            ['nome' => $this->nomeClienteNF, 'ativo' => true]
-        );
-        
-        // Associa ao pedido
-        $pedido = Pedido::find($this->pedidoTempId);
-        $pedido->cliente_id = $cliente->id;
-        $pedido->save();
-        
-        // Dispara job de emissão
-        EmitirNotaFiscal::dispatch($pedido->id, tenant()->id);
-        
-        $this->mostrarModalNF = false;
-        $this->pedidoTempId = null;
-        $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
-        
-        $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado com NF solicitada!");
+{
+    $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF ?? '');
+
+    $isCpf = strlen($cpfCnpj) === 11;
+    $isCnpj = strlen($cpfCnpj) === 14;
+
+    if (!$isCpf && !$isCnpj) {
+        $this->addError('cpfCnpjNF', 'Informe um CPF ou CNPJ válido.');
+        return;
     }
+
+    $tipoDocumento = $isCnpj ? 'CNPJ' : 'CPF';
+
+    $regras = [
+        'cpfCnpjNF' => 'required|string|min:11|max:18',
+        'nomeClienteNF' => 'required|string|min:3',
+    ];
+
+    $mensagens = [
+        'cpfCnpjNF.required' => 'Informe o CPF ou CNPJ.',
+        'nomeClienteNF.required' => 'Informe o nome ou razão social do cliente.',
+        'nomeClienteNF.min' => 'O nome do cliente precisa ter pelo menos 3 caracteres.',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Se for CNPJ, será NF-e.
+    | Então exige os dados completos do destinatário.
+    |--------------------------------------------------------------------------
+    */
+    if ($isCnpj) {
+        $regras = array_merge($regras, [
+            'telefoneNF' => 'required|string|min:10',
+            'enderecoNF' => 'required|string|min:2',
+            'numeroNF' => 'required|string|min:1',
+            'bairroNF' => 'required|string|min:2',
+            'cidadeNF' => 'required|string|min:2',
+            'ufNF' => 'required|string|size:2',
+            'cepNF' => 'required|string|min:8',
+        ]);
+
+        $mensagens = array_merge($mensagens, [
+            'telefoneNF.required' => 'Informe o telefone do destinatário.',
+            'enderecoNF.required' => 'Informe o endereço do destinatário.',
+            'numeroNF.required' => 'Informe o número do endereço.',
+            'bairroNF.required' => 'Informe o bairro.',
+            'cidadeNF.required' => 'Informe o município.',
+            'ufNF.required' => 'Informe a UF.',
+            'ufNF.size' => 'A UF deve ter 2 letras. Exemplo: PR.',
+            'cepNF.required' => 'Informe o CEP.',
+        ]);
+    }
+
+    $this->validate($regras, $mensagens);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validações extras para evitar erro na Focus NFe
+    |--------------------------------------------------------------------------
+    */
+    if ($isCnpj) {
+        $telefone = preg_replace('/[^0-9]/', '', $this->telefoneNF ?? '');
+        $cep = preg_replace('/[^0-9]/', '', $this->cepNF ?? '');
+
+        if (strlen($telefone) < 10) {
+            $this->addError('telefoneNF', 'Informe um telefone válido com DDD.');
+            return;
+        }
+
+        if (strlen($cep) !== 8) {
+            $this->addError('cepNF', 'Informe um CEP válido com 8 dígitos.');
+            return;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Monta os dados do cliente
+    |--------------------------------------------------------------------------
+    */
+    $dadosCliente = [
+        'nome' => $this->nomeClienteNF,
+        'tipo_documento' => $tipoDocumento,
+        'ativo' => true,
+    ];
+
+    if ($isCnpj) {
+        $dadosCliente = array_merge($dadosCliente, [
+            'inscricao_estadual' => $this->inscricaoEstadualNF ?: null,
+            'telefone' => preg_replace('/[^0-9]/', '', $this->telefoneNF ?? ''),
+            'endereco' => $this->enderecoNF,
+            'numero' => $this->numeroNF,
+            'bairro' => $this->bairroNF,
+            'cidade' => $this->cidadeNF,
+            'uf' => strtoupper($this->ufNF),
+            'cep' => preg_replace('/[^0-9]/', '', $this->cepNF ?? ''),
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cria ou atualiza cliente
+    |--------------------------------------------------------------------------
+    */
+    $cliente = Cliente::updateOrCreate(
+        [
+            'cpf_cnpj' => $cpfCnpj,
+        ],
+        $dadosCliente
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Associa cliente ao pedido
+    |--------------------------------------------------------------------------
+    */
+    $pedido = Pedido::find($this->pedidoTempId);
+
+    if (!$pedido) {
+        $this->toastError('Pedido não encontrado para emissão da nota.');
+        return;
+    }
+
+    $pedido->cliente_id = $cliente->id;
+    $pedido->save();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dispara job de emissão com CPF ou CNPJ
+    |--------------------------------------------------------------------------
+    */
+    EmitirNotaFiscal::dispatch($pedido->id, tenant()->id, $tipoDocumento);
+
+    $this->mostrarModalNF = false;
+    $this->pedidoTempId = null;
+
+    $this->reset([
+        'cpfCnpjNF',
+        'nomeClienteNF',
+        'inscricaoEstadualNF',
+        'telefoneNF',
+        'enderecoNF',
+        'numeroNF',
+        'bairroNF',
+        'cidadeNF',
+        'ufNF',
+        'cepNF',
+    ]);
+
+    $tipoNota = $isCnpj ? 'NF-e' : 'NFC-e';
+
+    $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado! {$tipoNota} solicitada.");
+}
 
     /**
      * Finaliza venda sem nota fiscal
@@ -890,7 +1025,7 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - COMANDA / MESA
     // ==========================================
-    
+
     /**
      * Atualiza a mesa selecionada
      * Carrega itens da comanda se existir
@@ -898,7 +1033,7 @@ public function adicionarMeiaPizza(): void
     public function updatedMesa(): void
     {
         $mesa = trim($this->mesa);
-        
+
         if (strlen($mesa) < 1) {
             $this->modoComanda = false;
             $this->comandaId = null;
@@ -1158,55 +1293,55 @@ public function adicionarMeiaPizza(): void
     // ==========================================
     // MÉTODOS - RENDERIZAÇÃO
     // ==========================================
-    
+
     /**
      * Renderiza a view do PDV
      * @return \Illuminate\View\View
      */
-   public function render()
-{
-    // Busca categorias ativas
-    $categorias = Categoria::query()
-        ->where('ativo', true)
-        ->orderBy('nome')
-        ->get();
+    public function render()
+    {
+        // Busca categorias ativas
+        $categorias = Categoria::query()
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get();
 
-    // Busca produtos ativos com filtros
-    $produtos = Produto::query()
-        ->where('ativo', true)
-        ->when($this->categoriaSelecionada, fn($q) => $q->where('categoria_id', $this->categoriaSelecionada))
-        ->when($this->busca, fn($q) => $q->where(function ($q2) {
-            $q2->where('nome', 'like', '%' . $this->busca . '%')
-                ->orWhere('codigo', 'like', '%' . $this->busca . '%');
-        }))
-        ->orderBy('nome')
-        ->get();
+        // Busca produtos ativos com filtros
+        $produtos = Produto::query()
+            ->where('ativo', true)
+            ->when($this->categoriaSelecionada, fn($q) => $q->where('categoria_id', $this->categoriaSelecionada))
+            ->when($this->busca, fn($q) => $q->where(function ($q2) {
+                $q2->where('nome', 'like', '%' . $this->busca . '%')
+                    ->orWhere('codigo', 'like', '%' . $this->busca . '%');
+            }))
+            ->orderBy('nome')
+            ->get();
 
-    // Busca clientes ativos
-    $clientes = Cliente::query()
-        ->where('ativo', true)
-        ->orderBy('nome')
-        ->get();
+        // Busca clientes ativos
+        $clientes = Cliente::query()
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get();
 
-    // Carrega configurações
-    $config = Configuracao::first();
-    $tipo = $config->tipo_negocio ?? 'lanchonete';
-    
-    // Configurações do PDV (com tipo_negocio incluído!)
-    $pdvConfig = [
-        'tipo_venda_padrao' => $this->configuracao->tipo_venda_padrao ?? 'unidade',
-        'unidade_padrao' => $this->configuracao->unidade_medida_padrao ?? 'UN',
-        'permite_meio' => $this->configuracao->permite_meia_porcao ?? false,
-        'exibir_tamanhos' => in_array($tipo, ['pizzaria', 'sorveteria']),
-        'exibir_adicionais' => in_array($tipo, ['lanchonete', 'pizzaria']),
-        'tipo_negocio' => $tipo, // <<< ADICIONE ESTA LINHA
-    ];
+        // Carrega configurações
+        $config = Configuracao::first();
+        $tipo = $config->tipo_negocio ?? 'lanchonete';
 
-    return view('livewire.tenant.pdv.index', [
-        'categorias' => $categorias,
-        'produtos' => $produtos,
-        'clientes' => $clientes,
-        'pdvConfig' => $pdvConfig,
-    ])->layout('layouts.tenant');
-}
+        // Configurações do PDV (com tipo_negocio incluído!)
+        $pdvConfig = [
+            'tipo_venda_padrao' => $this->configuracao->tipo_venda_padrao ?? 'unidade',
+            'unidade_padrao' => $this->configuracao->unidade_medida_padrao ?? 'UN',
+            'permite_meio' => $this->configuracao->permite_meia_porcao ?? false,
+            'exibir_tamanhos' => in_array($tipo, ['pizzaria', 'sorveteria']),
+            'exibir_adicionais' => in_array($tipo, ['lanchonete', 'pizzaria']),
+            'tipo_negocio' => $tipo, // <<< ADICIONE ESTA LINHA
+        ];
+
+        return view('livewire.tenant.pdv.index', [
+            'categorias' => $categorias,
+            'produtos' => $produtos,
+            'clientes' => $clientes,
+            'pdvConfig' => $pdvConfig,
+        ])->layout('layouts.tenant');
+    }
 }

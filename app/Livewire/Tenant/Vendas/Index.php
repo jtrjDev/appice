@@ -143,6 +143,13 @@ public function updatingStatusNF(): void
         return;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Define o tipo correto
+    |--------------------------------------------------------------------------
+    | CPF  = NFC-e
+    | CNPJ = NF-e
+    */
     $tipoDocumento = $isCnpj ? 'CNPJ' : 'CPF';
     $modelo = $isCnpj ? 'nfe' : 'nfce';
     $referencia = ($isCnpj ? 'NFE_' : 'NFC_') . $pedido->id;
@@ -158,6 +165,12 @@ public function updatingStatusNF(): void
         'nomeClienteNF.min' => 'O nome precisa ter pelo menos 3 caracteres.',
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Se for CNPJ, será NF-e.
+    | Então exige os dados completos do destinatário.
+    |--------------------------------------------------------------------------
+    */
     if ($isCnpj) {
         $regras = array_merge($regras, [
             'telefoneNF' => 'required|string|min:10',
@@ -196,6 +209,11 @@ public function updatingStatusNF(): void
         return;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Monta dados do cliente
+    |--------------------------------------------------------------------------
+    */
     $dadosCliente = [
         'nome' => $this->nomeClienteNF,
         'tipo_documento' => $tipoDocumento,
@@ -215,16 +233,43 @@ public function updatingStatusNF(): void
         ]);
     }
 
-    $cliente = Cliente::updateOrCreate(
-        ['cpf_cnpj' => $cpfCnpj],
-        $dadosCliente
-    );
+    /*
+    |--------------------------------------------------------------------------
+    | Cria ou atualiza cliente
+    |--------------------------------------------------------------------------
+    */
+    $cliente = Cliente::firstOrNew([
+    'cpf_cnpj' => $cpfCnpj,
+]);
 
-    $pedido->cliente_id = $cliente->id;
-    $pedido->save();
+$cliente->nome = $this->nomeClienteNF;
+$cliente->cpf_cnpj = $cpfCnpj;
+$cliente->ativo = true;
 
+if ($isCnpj) {
+    $cliente->inscricao_estadual = $this->inscricaoEstadualNF ?: null;
+    $cliente->telefone = $telefone;
+    $cliente->endereco = $this->enderecoNF;
+    $cliente->logradouro = $this->enderecoNF;
+    $cliente->numero = $this->numeroNF;
+    $cliente->bairro = $this->bairroNF;
+    $cliente->cidade = $this->cidadeNF;
+    $cliente->uf = strtoupper($this->ufNF ?: 'PR');
+    $cliente->cep = $cep;
+}
+
+$cliente->save();
+$cliente->refresh();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cria a nota como processando antes de disparar o Job
+    |--------------------------------------------------------------------------
+    */
     NotaFiscal::updateOrCreate(
-        ['referencia' => $referencia],
+        [
+            'referencia' => $referencia,
+        ],
         [
             'pedido_id' => $pedido->id,
             'modelo' => $modelo,
@@ -233,9 +278,24 @@ public function updatingStatusNF(): void
         ]
     );
 
-    EmitirNotaFiscal::dispatch($this->pedidoSelecionado->id, tenant()->id);
+    /*
+    |--------------------------------------------------------------------------
+    | Dispara a emissão passando o tipo correto
+    |--------------------------------------------------------------------------
+    | Essa é a linha principal do ajuste.
+    */
+    EmitirNotaFiscal::dispatch(
+        $pedido->id,
+        tenant()->id,
+        $tipoDocumento
+    );
 
-    session()->flash('success', "Nota fiscal solicitada para o pedido #{$pedido->numero_pedido}.");
+    $tipoNota = $isCnpj ? 'NF-e' : 'NFC-e';
+
+    session()->flash(
+        'success',
+        "{$tipoNota} solicitada para o pedido #{$pedido->numero_pedido}."
+    );
 
     $this->fecharModalNF();
 }

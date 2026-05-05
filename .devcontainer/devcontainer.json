@@ -1,16 +1,10 @@
 {
-    "name": "Laravel + MYSQL",
-    "image": "mcr.microsoft.com/devcontainers/php:8.3",
-    "features": {
-        "ghcr.io/devcontainers/features/mysql:1": {
-            "version": "8.0"
-        },
-        "ghcr.io/devcontainers/features/node:1": {
-            "version": "20"
-        }
-    },
+    "name": "Laravel + MySQL",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspaces/appice",
     "postCreateCommand": "bash .devcontainer/postCreate.sh",
-    "forwardPorts": [8000, 3306],
+    "forwardPorts": [8000, 5173, 3306],
     "remoteEnv": {
         "APP_ENV": "local"
     },

@@ -3,6 +3,7 @@
 namespace App\Models\Tenant;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Tenant\NotaFiscal;
 
 
 class Pedido extends Model
@@ -54,4 +55,9 @@ class Pedido extends Model
         $numero = $ultimo ? ((int) filter_var($ultimo, FILTER_SANITIZE_NUMBER_INT)) + 1 : 1;
         return str_pad($numero, 6, '0', STR_PAD_LEFT);
     }
+
+    public function notaFiscal()
+{
+    return $this->hasOne(NotaFiscal::class, 'pedido_id');
+}
 }

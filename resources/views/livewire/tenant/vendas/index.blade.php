@@ -2,43 +2,217 @@
     x-on:toast.window="$data.addToast($event.detail.type, $event.detail.message)">
 
     {{-- MODAL PARA CPF/CNPJ --}}
-    @if($mostrarModalNF)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div class="bg-white dark:bg-ink-900 rounded-lg w-full max-w-md p-6">
-            <h2 class="text-xl font-semibold mb-4">Emitir Nota Fiscal</h2>
-            <p class="text-sm text-ink-500 mb-4">Pedido #{{ $pedidoSelecionado?->numero_pedido }}</p>
-            
+@if($mostrarModalNF)
+    @php
+        $documentoLimpo = preg_replace('/[^0-9]/', '', $cpfCnpjNF ?? '');
+        $ehCpfNF = strlen($documentoLimpo) === 11;
+        $ehCnpjNF = strlen($documentoLimpo) === 14;
+    @endphp
+
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div class="bg-white dark:bg-ink-900 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+            <h2 class="text-xl font-semibold mb-1">Emitir Nota Fiscal</h2>
+
+            <p class="text-sm text-ink-500 mb-4">
+                Pedido #{{ $pedidoSelecionado?->numero_pedido }}
+            </p>
+
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1">CPF / CNPJ</label>
-                    <input type="text" wire:model="cpfCnpjNF" 
-                        class="w-full px-3 py-2 border rounded-lg" 
+                    <label class="block text-sm font-medium mb-1">CPF / CNPJ *</label>
+
+                    <input type="text"
+                        wire:model.live.debounce.300ms="cpfCnpjNF"
+                        class="w-full px-3 py-2 border rounded-lg"
                         placeholder="000.000.000-00 ou 00.000.000/0000-00">
-                    @error('cpfCnpjNF') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+
+                    <div class="mt-1">
+                        @if($ehCpfNF)
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                CPF → NFC-e
+                            </span>
+                        @elseif($ehCnpjNF)
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                                CNPJ → NF-e
+                            </span>
+                        @endif
+                    </div>
+
+                    @error('cpfCnpjNF')
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
+
                 <div>
-                    <label class="block text-sm font-medium mb-1">Nome do Cliente</label>
-                    <input type="text" wire:model="nomeClienteNF" 
-                        class="w-full px-3 py-2 border rounded-lg" 
-                        placeholder="Nome completo">
-                    @error('nomeClienteNF') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                    <label class="block text-sm font-medium mb-1">Nome / Razão Social *</label>
+
+                    <input type="text"
+                        wire:model="nomeClienteNF"
+                        class="w-full px-3 py-2 border rounded-lg"
+                        placeholder="Nome completo ou razão social">
+
+                    @error('nomeClienteNF')
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Tipo de Documento</label>
-                    <select wire:model="tipoDocumentoNF" class="w-full px-3 py-2 border rounded-lg">
-                        <option value="CPF">CPF (Pessoa Física)</option>
-                        <option value="CNPJ">CNPJ (Pessoa Jurídica)</option>
-                    </select>
-                </div>
+
+                @if($ehCnpjNF)
+                    <div class="border-t pt-4">
+                        <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 mb-1">
+                            Dados obrigatórios para NF-e
+                        </h3>
+
+                        <p class="text-xs text-ink-500 mb-4">
+                            Para CNPJ, a Focus exige dados completos do destinatário.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Inscrição Estadual</label>
+                                <input type="text"
+                                    wire:model="inscricaoEstadualNF"
+                                    class="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="ISENTO ou número da IE">
+
+                                @error('inscricaoEstadualNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Telefone *</label>
+                                <input type="text"
+                                    wire:model="telefoneNF"
+                                    class="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="43999999999">
+
+                                @error('telefoneNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">CEP *</label>
+                                <input type="text"
+                                    wire:model="cepNF"
+                                    class="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="86025400">
+
+                                @error('cepNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Município *</label>
+                                <input type="text"
+                                    wire:model="cidadeNF"
+                                    class="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="Londrina">
+
+                                @error('cidadeNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">UF *</label>
+                                <select wire:model="ufNF"
+                                    class="w-full px-3 py-2 border rounded-lg">
+                                    <option value="">Selecione</option>
+                                    <option value="AC">AC</option>
+                                    <option value="AL">AL</option>
+                                    <option value="AP">AP</option>
+                                    <option value="AM">AM</option>
+                                    <option value="BA">BA</option>
+                                    <option value="CE">CE</option>
+                                    <option value="DF">DF</option>
+                                    <option value="ES">ES</option>
+                                    <option value="GO">GO</option>
+                                    <option value="MA">MA</option>
+                                    <option value="MT">MT</option>
+                                    <option value="MS">MS</option>
+                                    <option value="MG">MG</option>
+                                    <option value="PA">PA</option>
+                                    <option value="PB">PB</option>
+                                    <option value="PR">PR</option>
+                                    <option value="PE">PE</option>
+                                    <option value="PI">PI</option>
+                                    <option value="RJ">RJ</option>
+                                    <option value="RN">RN</option>
+                                    <option value="RS">RS</option>
+                                    <option value="RO">RO</option>
+                                    <option value="RR">RR</option>
+                                    <option value="SC">SC</option>
+                                    <option value="SP">SP</option>
+                                    <option value="SE">SE</option>
+                                    <option value="TO">TO</option>
+                                </select>
+
+                                @error('ufNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Bairro *</label>
+                                <input type="text"
+                                    wire:model="bairroNF"
+                                    class="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="Centro">
+
+                                @error('bairroNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium mb-1">Logradouro *</label>
+                                <input type="text"
+                                    wire:model="enderecoNF"
+                                    class="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="Rua, avenida, travessa...">
+
+                                @error('enderecoNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Número *</label>
+                                <input type="text"
+                                    wire:model="numeroNF"
+                                    class="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="1007">
+
+                                @error('numeroNF')
+                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
-            
+
             <div class="flex justify-end gap-3 mt-6">
-                <button wire:click="fecharModalNF" class="px-4 py-2 border rounded-lg">Cancelar</button>
-                <button wire:click="emitirNotaComDocumento" class="px-4 py-2 bg-ink-900 text-white rounded-lg">Emitir Nota</button>
+                <button type="button"
+                    wire:click="fecharModalNF"
+                    class="px-4 py-2 border rounded-lg">
+                    Cancelar
+                </button>
+
+                <button type="button"
+                    wire:click="emitirNotaComDocumento"
+                    wire:loading.attr="disabled"
+                    wire:target="emitirNotaComDocumento"
+                    class="px-4 py-2 bg-ink-900 text-white rounded-lg disabled:opacity-50">
+                    <span wire:loading.remove wire:target="emitirNotaComDocumento">Emitir Nota</span>
+                    <span wire:loading wire:target="emitirNotaComDocumento">Emitindo...</span>
+                </button>
             </div>
         </div>
     </div>
-    @endif
+@endif
 
     {{-- CABEÇALHO --}}
     <div class="mb-6 flex justify-between items-center">
@@ -165,7 +339,7 @@
                 <tbody class="divide-y divide-gray-100 dark:divide-ink-700">
                     @forelse($this->pedidos as $pedido)
                         @php
-                            $notaFiscal = \App\Models\Tenant\NotaFiscal::where('pedido_id', $pedido->id)->first();
+                            $notaFiscal = $pedido->notaFiscal;
                             $temNota = $notaFiscal && $notaFiscal->status === 'autorizada';
                             $notaProcessando = $notaFiscal && $notaFiscal->status === 'processando';
                             $notaErro = $notaFiscal && $notaFiscal->status === 'erro';

@@ -404,12 +404,13 @@
                 {{-- Valor --}}
                 <div>
                     <label class="text-[10px] font-black uppercase text-ink-500">Valor recebido</label>
-                    <input
+                   <input
                         type="text"
                         inputmode="decimal"
                         id="valor-pagamento"
                         x-ref="valorPagamento"
                         x-model="valorPagamentoLocal"
+                        x-init="valorPagamentoLocal = @js(number_format($valorPagamento > 0 ? $valorPagamento : $pendente, 2, ',', '.'))"
                         @keydown.enter.prevent="adicionarPagamentoPeloTeclado()"
                         class="w-full mt-1 px-3 py-3 border-2 border-gray-200 dark:border-ink-700 rounded-xl text-center font-black text-2xl focus:border-primary-500 outline-none transition-all bg-white dark:bg-ink-900"
                         placeholder="0,00">
@@ -947,164 +948,218 @@
 
     <script>
         function pdvTelaUnica() {
-            return {
-                valorPagamentoLocal: '',
+        return {
+            valorPagamentoLocal: '',
 
-                init() {
-                    this.$nextTick(() => {
-                        this.focarCampo('campo-codigo');
-                    });
+            init() {
+                this.$nextTick(() => {
+                    this.focarCampo('campo-codigo');
+                });
 
-                    if (!window.__pdvTelaUnicaAtalhosRegistrados) {
-                        window.__pdvTelaUnicaAtalhosRegistrados = true;
-                        document.addEventListener('keydown', (e) => this.handleKeydown(e));
+                if (!window.__pdvTelaUnicaAtalhosRegistrados) {
+                    window.__pdvTelaUnicaAtalhosRegistrados = true;
+                    document.addEventListener('keydown', (e) => this.handleKeydown(e));
+                }
+
+                window.addEventListener('focar-codigo', () => {
+                    this.focarCampo('campo-codigo');
+                });
+                window.addEventListener('pdv-resetar-quantidade', () => {
+                    const campoQuantidade = document.getElementById('campo-quantidade');
+
+                    if (campoQuantidade) {
+                        campoQuantidade.value = '1,000';
+                    }
+                });
+                window.addEventListener('pdv-atualizar-valor-pagamento', (event) => {
+                    const detalhe = event.detail;
+
+                    let valorFormatado = '0,00';
+
+                    if (Array.isArray(detalhe) && detalhe[0]?.valor_formatado) {
+                        valorFormatado = detalhe[0].valor_formatado;
+                    } else if (detalhe?.valor_formatado) {
+                        valorFormatado = detalhe.valor_formatado;
                     }
 
-                    document.addEventListener('focar-codigo', () => {
-                        this.focarCampo('campo-codigo');
-                    });
-                },
+                    this.valorPagamentoLocal = valorFormatado;
 
-                focarCampo(id) {
-                    setTimeout(() => {
-                        const campo = document.getElementById(id);
-                        if (campo) {
-                            campo.focus();
-                            if (typeof campo.select === 'function') campo.select();
-                        }
-                    }, 60);
-                },
-
-                selecionarPagamento(forma) {
-                    this.$wire.set('formaPagamento', forma);
-                    this.focarCampo('valor-pagamento');
-                },
-
-                parseValorPagamento(valor) {
-                    let texto = String(valor ?? '').trim();
-
-                    if (!texto) return 0;
-
-                    // Aceita 10, 10.50, 10,50 e 1.234,56
-                    texto = texto.replace(/[^0-9,.-]/g, '');
-
-                    if (texto.includes(',')) {
-                        texto = texto.replace(/\./g, '').replace(',', '.');
-                    }
-
-                    return Number(texto);
-                },
-
-                adicionarPagamentoPeloTeclado() {
                     const input = document.getElementById('valor-pagamento');
-                    const valor = this.parseValorPagamento(this.valorPagamentoLocal || input?.value);
 
-                    if (!valor || valor <= 0) {
-                        this.focarCampo('valor-pagamento');
-                        return;
+                    if (input) {
+                        input.value = valorFormatado;
                     }
+                });
 
-                    this.$wire.set('valorPagamento', valor)
-                        .then(() => this.$wire.call('adicionarPagamento'))
-                        .then(() => {
-                            this.valorPagamentoLocal = '';
-                            if (input) input.value = '';
-                            this.focarCampo('valor-pagamento');
-                        });
-                },
+                document.addEventListener('focar-codigo', () => {
+                    this.focarCampo('campo-codigo');
+                });
+            },
 
-                finalizarVendaPeloTeclado() {
-                    const botao = document.querySelector('[data-finalizar-venda="true"]');
-                    if (botao && !botao.disabled) {
-                        botao.click();
-                    }
-                },
+            focarCampo(id) {
+                setTimeout(() => {
+                    const campo = document.getElementById(id);
 
-                handleKeydown(e) {
-                    const target = e.target;
-                    const tag = target.tagName;
-                    const isInput = tag === 'INPUT' && target.type !== 'hidden';
-                    const isSelect = tag === 'SELECT';
-                    const isTextarea = tag === 'TEXTAREA';
+                    if (campo) {
+                        campo.focus();
 
-                    if (e.ctrlKey && e.key === 'Enter') {
-                        e.preventDefault();
-                        this.finalizarVendaPeloTeclado();
-                        return;
-                    }
-
-                    if (e.key === 'F2') {
-                        e.preventDefault();
-                        this.focarCampo('campo-codigo');
-                        return;
-                    }
-
-                    if (e.key === 'F3') {
-                        e.preventDefault();
-                        this.focarCampo('campo-busca');
-                        return;
-                    }
-
-                    if (e.key === 'F4') {
-                        e.preventDefault();
-                        this.focarCampo('campo-quantidade');
-                        return;
-                    }
-
-                    if (e.key === 'F5') {
-                        e.preventDefault();
-                        this.focarCampo('valor-pagamento');
-                        return;
-                    }
-
-                    if (e.key === 'F6') {
-                        e.preventDefault();
-                        if (confirm('Nova venda?')) {
-                            this.$wire.set('mesa', '');
-                            this.$wire.set('modoComanda', false);
-                            this.$wire.set('comandaId', null);
-                            this.$wire.call('limparCarrinho');
-                            this.focarCampo('campo-codigo');
+                        if (typeof campo.select === 'function') {
+                            campo.select();
                         }
-                        return;
                     }
+                }, 80);
+            },
 
-                    if (e.key === 'F7') {
-                        e.preventDefault();
-                        this.selecionarPagamento('dinheiro');
-                        return;
-                    }
+            selecionarPagamento(forma) {
+                this.$wire.set('formaPagamento', forma);
+                this.focarCampo('campo-codigo');
+            },
 
-                    if (e.key === 'F8') {
-                        e.preventDefault();
-                        this.selecionarPagamento('cartao_credito');
-                        return;
-                    }
+            parseValorPagamento(valor) {
+                let texto = String(valor ?? '').trim();
 
-                    if (e.key === 'F9') {
-                        e.preventDefault();
-                        this.selecionarPagamento('cartao_debito');
-                        return;
-                    }
+                if (!texto) {
+                    return 0;
+                }
 
-                    if (e.key === 'F10') {
-                        e.preventDefault();
-                        this.selecionarPagamento('pix');
-                        return;
-                    }
+                texto = texto.replace(/[^0-9,.-]/g, '');
 
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
+                if (texto.includes(',')) {
+                    texto = texto.replace(/\./g, '').replace(',', '.');
+                }
+
+                return Number(texto);
+            },
+
+            formatarMoeda(valor) {
+                return Number(valor || 0).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            },
+
+            adicionarPagamentoPeloTeclado() {
+                const input = document.getElementById('valor-pagamento');
+                const valor = this.parseValorPagamento(this.valorPagamentoLocal || input?.value);
+
+                if (!valor || valor <= 0) {
+                    this.focarCampo('valor-pagamento');
+                    return;
+                }
+
+                this.$wire.set('valorPagamento', valor)
+                    .then(() => this.$wire.call('adicionarPagamento'))
+                    .then(() => {
+                        const restante = Number(this.$wire.valorPendente || 0);
+
+                        this.valorPagamentoLocal = this.formatarMoeda(restante);
+
+                        if (input) {
+                            input.value = this.valorPagamentoLocal;
+                        }
+
                         this.focarCampo('campo-codigo');
-                        return;
+                    });
+            },
+
+            finalizarVendaPeloTeclado() {
+                const botao = document.querySelector('[data-finalizar-venda="true"]');
+
+                if (botao && !botao.disabled) {
+                    botao.click();
+                }
+            },
+
+            handleKeydown(e) {
+                const target = e.target;
+                const tag = target.tagName;
+                const isInput = tag === 'INPUT' && target.type !== 'hidden';
+                const isSelect = tag === 'SELECT';
+                const isTextarea = tag === 'TEXTAREA';
+
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    this.finalizarVendaPeloTeclado();
+                    return;
+                }
+
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    this.focarCampo('campo-codigo');
+                    return;
+                }
+
+                if (e.key === 'F3') {
+                    e.preventDefault();
+                    this.focarCampo('campo-busca');
+                    return;
+                }
+
+                if (e.key === 'F4') {
+                    e.preventDefault();
+                    this.focarCampo('campo-quantidade');
+                    return;
+                }
+
+                if (e.key === 'F5') {
+                    e.preventDefault();
+                    this.focarCampo('valor-pagamento');
+                    return;
+                }
+
+                if (e.key === 'F6') {
+                    e.preventDefault();
+
+                    if (confirm('Nova venda?')) {
+                        this.$wire.set('mesa', '');
+                        this.$wire.set('modoComanda', false);
+                        this.$wire.set('comandaId', null);
+                        this.$wire.call('limparCarrinho')
+                            .then(() => {
+                                this.valorPagamentoLocal = '0,00';
+                                this.focarCampo('campo-codigo');
+                            });
                     }
 
-                    if (isInput || isSelect || isTextarea) {
-                        return;
-                    }
+                    return;
+                }
+
+                if (e.key === 'F7') {
+                    e.preventDefault();
+                    this.selecionarPagamento('dinheiro');
+                    return;
+                }
+
+                if (e.key === 'F8') {
+                    e.preventDefault();
+                    this.selecionarPagamento('cartao_credito');
+                    return;
+                }
+
+                if (e.key === 'F9') {
+                    e.preventDefault();
+                    this.selecionarPagamento('cartao_debito');
+                    return;
+                }
+
+                if (e.key === 'F10') {
+                    e.preventDefault();
+                    this.selecionarPagamento('pix');
+                    return;
+                }
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    this.focarCampo('campo-codigo');
+                    return;
+                }
+
+                if (isInput || isSelect || isTextarea) {
+                    return;
                 }
             }
         }
+    }
     </script>
     @endpush
 </div>

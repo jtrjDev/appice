@@ -2,22 +2,24 @@
 
 namespace App\Livewire\Tenant\PDV;
 
-use App\Models\Tenant\Categoria;
-use App\Models\Tenant\Produto;
-use App\Models\Tenant\Cliente;
+use App\Jobs\EmitirNotaFiscal;
+use App\Livewire\Traits\WithToast;
 use App\Models\Tenant\Caixa;
-use App\Models\Tenant\Pedido;
+use App\Models\Tenant\Categoria;
+use App\Models\Tenant\Cliente;
 use App\Models\Tenant\Comanda;
-use App\Models\Tenant\Configuracao;
 use App\Models\Tenant\ComandaItem;
 use App\Models\Tenant\ComandaPagamento;
+use App\Models\Tenant\Configuracao;
+use App\Models\Tenant\Pedido;
 use App\Models\Tenant\PedidoItem;
+use App\Models\Tenant\Produto;
+use App\Models\Tenant\User;
 use Illuminate\Support\Facades\DB;
-use Livewire\Component;
-use Livewire\Attributes\Url;
-use App\Livewire\Traits\WithToast;
+use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use App\Jobs\EmitirNotaFiscal;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
 /**
  * Componente principal do PDV (Ponto de Venda)
@@ -39,13 +41,21 @@ class Index extends Component
 
     /** @var string Nome do cliente para nota fiscal */
     public $nomeClienteNF = '';
+
     public $inscricaoEstadualNF;
+
     public $telefoneNF;
+
     public $enderecoNF;
+
     public $numeroNF;
+
     public $bairroNF;
+
     public $cidadeNF;
+
     public $ufNF = 'PR';
+
     public $cepNF;
 
     /** @var string Tipo do documento (CPF/CNPJ) */
@@ -165,12 +175,14 @@ class Index extends Component
     /** @var object|null Dados de configuração do tenant */
     public $configuracao;
 
-
     public array $pizzaMetadeA = [];
+
     public array $pizzaMetadeB = [];
 
     public string $tamanhoPizza = 'media';
+
     public string $regraPrecoMeiaPizza = 'maior';
+
     public string $observacaoPizza = '';
 
     // ==========================================
@@ -184,7 +196,7 @@ class Index extends Component
     public function mount(): void
     {
         // Busca o ID do usuário logado no tenant
-        $this->tenantUserId = \App\Models\Tenant\User::where('email', auth()->user()->email)->value('id');
+        $this->tenantUserId = User::where('email', auth()->user()->email)->value('id');
 
         // Carrega carrinho da sessão
         $this->carrinho = session('pdv_carrinho', []);
@@ -220,6 +232,23 @@ class Index extends Component
 
         // Calcula valores pendentes iniciais
         $this->recalcularPendente();
+    }
+
+    private function atualizarValorPagamentoNaTela(): void
+    {
+        $valor = (float) ($this->valorPagamento ?? 0);
+
+        $this->dispatch('pdv-atualizar-valor-pagamento', [
+            'valor' => $valor,
+            'valor_formatado' => number_format($valor, 2, ',', '.'),
+        ]);
+    }
+
+    private function focarCampoCodigo(): void
+    {
+        if (! $this->mostrarModalNF) {
+            $this->dispatch('focar-codigo');
+        }
     }
 
     public function selecionarMetadePizza($produtoId, string $lado): void
@@ -263,14 +292,14 @@ class Index extends Component
             ? (($precoA + $precoB) / 2)
             : max($precoA, $precoB);
 
-        $chave = 'meia_' . $this->pizzaMetadeA['id'] . '_' . $this->pizzaMetadeB['id'] . '_' . uniqid();
+        $chave = 'meia_'.$this->pizzaMetadeA['id'].'_'.$this->pizzaMetadeB['id'].'_'.uniqid();
 
         $nome = 'Pizza Meio a Meio: '
-            . $this->pizzaMetadeA['nome']
-            . ' / '
-            . $this->pizzaMetadeB['nome']
-            . ' - '
-            . ucfirst($this->tamanhoPizza);
+            .$this->pizzaMetadeA['nome']
+            .' / '
+            .$this->pizzaMetadeB['nome']
+            .' - '
+            .ucfirst($this->tamanhoPizza);
 
         $this->carrinho[$chave] = [
             'id' => $chave,
@@ -279,7 +308,7 @@ class Index extends Component
             'nome' => $nome,
             'quantidade' => 1,
             'preco' => $valor,
-            'preco_formatado' => 'R$ ' . number_format($valor, 2, ',', '.'),
+            'preco_formatado' => 'R$ '.number_format($valor, 2, ',', '.'),
             'subtotal' => $valor,
             'observacao' => $this->observacaoPizza,
             'metades' => [
@@ -292,7 +321,7 @@ class Index extends Component
 
         $this->limparMeiaPizza();
 
-        $this->dispatch('focar-codigo');
+        $this->focarCampoCodigo();
     }
 
     // ==========================================
@@ -301,7 +330,8 @@ class Index extends Component
 
     /**
      * Recalcula o valor pendente baseado nos pagamentos e comanda
-     * @param bool $ajustarValorPagamento Se deve ajustar o campo valorPagamento
+     *
+     * @param  bool  $ajustarValorPagamento  Se deve ajustar o campo valorPagamento
      */
     private function recalcularPendente(bool $ajustarValorPagamento = true): void
     {
@@ -324,6 +354,7 @@ class Index extends Component
         // Ajusta o campo de valor pagamento se necessário
         if ($ajustarValorPagamento) {
             $this->valorPagamento = $this->valorPendente > 0 ? $this->valorPendente : 0;
+            $this->atualizarValorPagamentoNaTela();
         }
     }
 
@@ -333,7 +364,6 @@ class Index extends Component
 
     /**
      * Calcula o total do carrinho
-     * @return float
      */
     #[Computed]
     public function totalCarrinho(): float
@@ -343,7 +373,6 @@ class Index extends Component
 
     /**
      * Verifica se existe um caixa aberto
-     * @return Caixa|null
      */
     #[Computed]
     public function caixaAberto(): ?Caixa
@@ -353,7 +382,6 @@ class Index extends Component
 
     /**
      * Calcula o total de itens no carrinho
-     * @return float
      */
     #[Computed]
     public function totalItens(): float
@@ -367,11 +395,18 @@ class Index extends Component
 
     /**
      * Filtra produtos por categoria
-     * @param int|null $categoriaId ID da categoria ou null para todos
+     *
+     * @param  int|null  $categoriaId  ID da categoria ou null para todos
      */
     public function selecionarCategoria(?int $categoriaId): void
     {
         $this->categoriaSelecionada = $categoriaId;
+    }
+
+    private function invalidarTotaisCarrinho(): void
+    {
+        unset($this->totalCarrinho);
+        unset($this->totalItens);
     }
 
     // ==========================================
@@ -380,15 +415,17 @@ class Index extends Component
 
     /**
      * Adiciona um produto ao carrinho com suas opções (peso, meia, tamanho, adicionais)
-     * @param int $produtoId ID do produto
-     * @param float|null $quantidade Quantidade (opcional)
+     *
+     * @param  int  $produtoId  ID do produto
+     * @param  float|null  $quantidade  Quantidade (opcional)
      */
     public function adicionarProduto(int $produtoId, ?float $quantidade = null): void
     {
         $produto = Produto::find($produtoId);
 
-        if (!$produto) {
+        if (! $produto) {
             $this->toastError('Produto não encontrado!');
+
             return;
         }
 
@@ -414,19 +451,19 @@ class Index extends Component
                 $this->carrinho[$chave]['preco'] * $this->carrinho[$chave]['quantidade'],
                 2
             );
-            if ($observacao && !isset($this->carrinho[$chave]['observacao'])) {
+            if ($observacao && ! isset($this->carrinho[$chave]['observacao'])) {
                 $this->carrinho[$chave]['observacao'] = $observacao;
             }
         } else {
             // Cria novo item no carrinho
             $this->carrinho[$chave] = [
-                'id'              => $produto->id,
-                'nome'            => $produto->nome,
-                'preco'           => $precoUnitario,
-                'preco_formatado' => 'R$ ' . number_format($precoUnitario, 2, ',', '.'),
-                'quantidade'      => $quantidade,
-                'subtotal'        => round($valorTotal, 2),
-                'observacao'      => $observacao ?: null,
+                'id' => $produto->id,
+                'nome' => $produto->nome,
+                'preco' => $precoUnitario,
+                'preco_formatado' => 'R$ '.number_format($precoUnitario, 2, ',', '.'),
+                'quantidade' => $quantidade,
+                'subtotal' => round($valorTotal, 2),
+                'observacao' => $observacao ?: null,
             ];
         }
 
@@ -434,16 +471,19 @@ class Index extends Component
         $this->resetarOpcoesProduto();
 
         $this->salvarCarrinho();
+        $this->invalidarTotaisCarrinho();
         $this->recalcularPendente();
         $this->toastSuccess("Produto {$produto->nome} adicionado!");
+        $this->focarCampoCodigo();
     }
 
     /**
      * Calcula o preço baseado nas opções selecionadas (peso, meia porção, tamanhos)
-     * @param object $produto Produto atual
-     * @param float $precoBase Preço base do produto
-     * @param string $observacao Referência para montar observação
-     * @param float $valorAdicionais Referência para somar adicionais
+     *
+     * @param  object  $produto  Produto atual
+     * @param  float  $precoBase  Preço base do produto
+     * @param  string  $observacao  Referência para montar observação
+     * @param  float  $valorAdicionais  Referência para somar adicionais
      * @return float Preço final calculado
      */
     private function calcularPrecoComOpcoes($produto, $precoBase, &$observacao, &$valorAdicionais)
@@ -452,13 +492,14 @@ class Index extends Component
         if ($this->peso > 0) {
             $this->quantidadeInput = $this->peso;
             $observacao .= "⚖️ Peso: {$this->peso}kg";
+
             return $precoBase;
         }
 
         // 2. Verifica meia porção (pizzaria, açaí)
         if ($this->meiaPorcao && $produto->permite_meio && $produto->preco_meio) {
             $precoBase = $produto->preco_meio;
-            $observacao .= ($observacao ? ' | ' : '') . '🍕 Meia porção';
+            $observacao .= ($observacao ? ' | ' : '').'🍕 Meia porção';
         }
 
         // 3. Verifica tamanho selecionado
@@ -466,12 +507,12 @@ class Index extends Component
             $tamanhoEncontrado = collect($produto->tamanhos)->firstWhere('nome', $this->tamanhoSelecionado);
             if ($tamanhoEncontrado) {
                 $precoBase = $tamanhoEncontrado['preco'];
-                $observacao .= ($observacao ? ' | ' : '') . "📏 Tamanho: {$this->tamanhoSelecionado}";
+                $observacao .= ($observacao ? ' | ' : '')."📏 Tamanho: {$this->tamanhoSelecionado}";
             }
         }
 
         // 4. Verifica adicionais
-        if (!empty($this->adicionaisSelecionados)) {
+        if (! empty($this->adicionaisSelecionados)) {
             $adicionaisTexto = [];
             foreach ($this->adicionaisSelecionados as $adicionalNome) {
                 $adicional = collect($this->adicionaisDisponiveis)->firstWhere('nome', $adicionalNome);
@@ -480,8 +521,8 @@ class Index extends Component
                     $adicionaisTexto[] = $adicionalNome;
                 }
             }
-            if (!empty($adicionaisTexto)) {
-                $observacao .= ($observacao ? ' | ' : '') . '➕ Adicionais: ' . implode(', ', $adicionaisTexto);
+            if (! empty($adicionaisTexto)) {
+                $observacao .= ($observacao ? ' | ' : '').'➕ Adicionais: '.implode(', ', $adicionaisTexto);
             }
         }
 
@@ -498,6 +539,7 @@ class Index extends Component
         $this->meiaPorcao = false;
         $this->tamanhoSelecionado = null;
         $this->adicionaisSelecionados = [];
+        $this->dispatch('pdv-resetar-quantidade');
     }
 
     // ==========================================
@@ -506,7 +548,8 @@ class Index extends Component
 
     /**
      * Remove um produto do carrinho
-     * @param int $produtoId ID do produto
+     *
+     * @param  int  $produtoId  ID do produto
      */
     public function removerProduto(int $produtoId): void
     {
@@ -514,25 +557,29 @@ class Index extends Component
         unset($this->carrinho[$chave]);
 
         $this->salvarCarrinho();
+        $this->invalidarTotaisCarrinho();
         $this->recalcularPendente();
+        $this->focarCampoCodigo();
     }
 
     /**
      * Atualiza a quantidade de um produto no carrinho
-     * @param int $produtoId ID do produto
-     * @param mixed $quantidade Nova quantidade
+     *
+     * @param  int  $produtoId  ID do produto
+     * @param  mixed  $quantidade  Nova quantidade
      */
     public function atualizarQuantidade(int $produtoId, mixed $quantidade): void
     {
         $chave = (string) $produtoId;
         $quantidade = (float) $quantidade;
 
-        if (!isset($this->carrinho[$chave])) {
+        if (! isset($this->carrinho[$chave])) {
             return;
         }
 
         if ($quantidade <= 0) {
             $this->removerProduto($produtoId);
+
             return;
         }
 
@@ -543,21 +590,44 @@ class Index extends Component
         );
 
         $this->salvarCarrinho();
+        $this->invalidarTotaisCarrinho();
         $this->recalcularPendente();
+        $this->focarCampoCodigo();
     }
 
     /**
      * Remove todos os itens do carrinho
      */
-    public function limparCarrinho(): void
+    public function limparCarrinho(bool $mostrarToast = true): void
     {
         $this->carrinho = [];
         $this->pagamentos = [];
+
         $this->valorPendente = 0;
         $this->valorPagamento = 0;
+        $this->valorPagamento = 0;
+
+        $this->peso = 0;
+        $this->meiaPorcao = false;
+        $this->tamanhoSelecionado = null;
+        $this->adicionaisSelecionados = [];
+        $this->quantidadeInput = 1;
 
         session()->forget('pdv_carrinho');
-        $this->toastInfo('Carrinho limpo!');
+
+        $this->invalidarTotaisCarrinho();
+
+        $this->dispatch('pdv-atualizar-valor-pagamento', [
+            'valor' => 0,
+            'valor_formatado' => '0,00',
+        ]);
+
+        $this->dispatch('pdv-resetar-quantidade');
+        $this->focarCampoCodigo();
+
+        if ($mostrarToast) {
+            $this->toastInfo('Carrinho limpo!');
+        }
     }
 
     /**
@@ -589,9 +659,11 @@ class Index extends Component
             $this->adicionarProduto($produto->id, $this->quantidadeInput);
             $this->codigoProduto = '';
             $this->quantidadeInput = 1;
-            $this->dispatch('focar-codigo');
+            $this->focarCampoCodigo();
         } else {
             $this->toastWarning("Produto não encontrado: {$codigo}");
+            $this->codigoProduto = '';
+            $this->focarCampoCodigo();
         }
     }
 
@@ -606,6 +678,7 @@ class Index extends Component
     {
         if (empty($this->carrinho)) {
             $this->toastWarning('Carrinho vazio! Adicione produtos primeiro.');
+
             return;
         }
 
@@ -637,6 +710,7 @@ class Index extends Component
     {
         if ($this->modoComanda) {
             $this->adicionarPagamento();
+
             return;
         }
 
@@ -660,11 +734,12 @@ class Index extends Component
     {
         if (empty($this->carrinho)) {
             $this->toastWarning('Insira ao menos um item no carrinho!');
+
             return;
         }
 
         // Tenta recuperar comanda pela mesa
-        if (!$this->comandaId && $this->mesa) {
+        if (! $this->comandaId && $this->mesa) {
             $comanda = Comanda::buscarMesa($this->mesa);
             if ($comanda) {
                 $this->comandaId = $comanda->id;
@@ -678,6 +753,7 @@ class Index extends Component
 
         if ($valor <= 0) {
             $this->toastWarning('Informe um valor para pagamento!');
+
             return;
         }
 
@@ -685,11 +761,13 @@ class Index extends Component
         if ($this->modoComanda && $this->comandaId) {
             $this->pagarParcialComanda();
             $this->recalcularPendente();
+
             return;
         }
 
         if ($this->valorPendente <= 0) {
             $this->toastInfo('Valores inseridos, agora finalize a venda.');
+
             return;
         }
 
@@ -713,7 +791,7 @@ class Index extends Component
         $this->recalcularPendente();
 
         if ($this->valorPendente > 0) {
-            $this->toastSuccess("Pagamento adicionado! Restante: R$ " . number_format($this->valorPendente, 2, ',', '.'));
+            $this->toastSuccess('Pagamento adicionado! Restante: R$ '.number_format($this->valorPendente, 2, ',', '.'));
         } else {
             $this->toastSuccess('Pagamento completo! Agora clique em Finalizar Venda.');
         }
@@ -721,11 +799,12 @@ class Index extends Component
 
     /**
      * Remove um pagamento da lista
-     * @param int $index Índice do pagamento na lista
+     *
+     * @param  int  $index  Índice do pagamento na lista
      */
     public function removerPagamento(int $index): void
     {
-        if (!isset($this->pagamentos[$index])) {
+        if (! isset($this->pagamentos[$index])) {
             return;
         }
 
@@ -746,23 +825,26 @@ class Index extends Component
         // Validação do carrinho
         if (empty($this->carrinho)) {
             $this->toastWarning('Carrinho vazio!');
+
             return;
         }
 
         $this->recalcularPendente(false);
 
         // Verifica se o pagamento está completo
-        if (!$this->modoComanda && $this->valorPendente > 0) {
-            $this->toastWarning('Ainda falta R$ ' . number_format($this->valorPendente, 2, ',', '.') . ' para concluir a venda.');
+        if (! $this->modoComanda && $this->valorPendente > 0) {
+            $this->toastWarning('Ainda falta R$ '.number_format($this->valorPendente, 2, ',', '.').' para concluir a venda.');
+
             return;
         }
 
         // Verifica se há caixa aberto
         $caixa = Caixa::caixaAberto();
 
-        if (!$caixa) {
+        if (! $caixa) {
             $this->toastError('Nenhum caixa aberto! Abra o caixa antes de vender.');
             $this->mostrarPagamento = false;
+
             return;
         }
 
@@ -773,36 +855,36 @@ class Index extends Component
 
             // Cria o pedido
             $pedido = Pedido::create([
-                'caixa_id'      => $caixa->id,
+                'caixa_id' => $caixa->id,
                 'numero_pedido' => Pedido::gerarNumero(),
-                'cliente_id'    => $this->clienteId ?: null,
-                'tipo'          => 'balcao',
-                'mesa'          => $this->mesa ?: null,
-                'subtotal'      => $subtotal,
-                'taxa_entrega'  => 0,
-                'desconto'      => 0,
-                'total'         => $subtotal,
-                'status'        => 'entregue',
-                'pagamentos'    => $this->pagamentos,
-                'atendente_id'  => $this->tenantUserId ?? 1,
+                'cliente_id' => $this->clienteId ?: null,
+                'tipo' => 'balcao',
+                'mesa' => $this->mesa ?: null,
+                'subtotal' => $subtotal,
+                'taxa_entrega' => 0,
+                'desconto' => 0,
+                'total' => $subtotal,
+                'status' => 'entregue',
+                'pagamentos' => $this->pagamentos,
+                'atendente_id' => $this->tenantUserId ?? 1,
             ]);
 
             // Cria os itens do pedido
             foreach ($this->carrinho as $item) {
                 PedidoItem::create([
-                    'pedido_id'      => $pedido->id,
-                    'produto_id'     => $item['id'],
-                    'produto_nome'   => $item['nome'],
-                    'quantidade'     => $item['quantidade'],
+                    'pedido_id' => $pedido->id,
+                    'produto_id' => $item['id'],
+                    'produto_nome' => $item['nome'],
+                    'quantidade' => $item['quantidade'],
                     'preco_unitario' => $item['preco'],
-                    'subtotal'       => $item['subtotal'],
+                    'subtotal' => $item['subtotal'],
                 ]);
             }
 
             // Atualiza totais do caixa
             $totaisPagamentos = collect($this->pagamentos)
                 ->groupBy('forma')
-                ->map(fn($grupo) => $grupo->sum('valor'));
+                ->map(fn ($grupo) => $grupo->sum('valor'));
 
             $caixa->increment('total_vendas', $subtotal);
             $caixa->increment('quantidade_vendas');
@@ -815,7 +897,19 @@ class Index extends Component
 
             // Limpa o carrinho e reseta estados
             $this->mostrarPagamento = false;
-            $this->limparCarrinho();
+            $this->limparCarrinho(false);
+            $this->invalidarTotaisCarrinho();
+
+            $this->valorPendente = 0;
+            $this->valorPagamento = 0;
+
+            $this->dispatch('pdv-atualizar-valor-pagamento', [
+                'valor' => 0,
+                'valor_formatado' => '0,00',
+            ]);
+
+            $this->dispatch('pdv-resetar-quantidade');
+            $this->focarCampoCodigo();
             $this->mesa = '';
             $this->comanda = '';
             $this->observacao = '';
@@ -839,13 +933,13 @@ class Index extends Component
             elseif ($config && $config->emitir_nf_automatico) {
                 $this->pedidoTempId = $pedido->id;
                 $this->mostrarModalNF = true;
-                $this->toastInfo("Deseja emitir nota fiscal? Preencha os dados.");
+                $this->toastInfo('Deseja emitir nota fiscal? Preencha os dados.');
             } else {
                 $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado!");
             }
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->toastError('Erro ao finalizar venda: ' . $e->getMessage());
+            $this->toastError('Erro ao finalizar venda: '.$e->getMessage());
         }
     }
 
@@ -857,159 +951,163 @@ class Index extends Component
      * Emite nota fiscal após finalizar a venda (modal)
      */
     public function emitirNotaDaVenda()
-{
-    $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF ?? '');
+    {
+        $cpfCnpj = preg_replace('/[^0-9]/', '', $this->cpfCnpjNF ?? '');
 
-    $isCpf = strlen($cpfCnpj) === 11;
-    $isCnpj = strlen($cpfCnpj) === 14;
+        $isCpf = strlen($cpfCnpj) === 11;
+        $isCnpj = strlen($cpfCnpj) === 14;
 
-    if (!$isCpf && !$isCnpj) {
-        $this->addError('cpfCnpjNF', 'Informe um CPF ou CNPJ válido.');
-        return;
-    }
+        if (! $isCpf && ! $isCnpj) {
+            $this->addError('cpfCnpjNF', 'Informe um CPF ou CNPJ válido.');
 
-    $tipoDocumento = $isCnpj ? 'CNPJ' : 'CPF';
-
-    $regras = [
-        'cpfCnpjNF' => 'required|string|min:11|max:18',
-        'nomeClienteNF' => 'required|string|min:3',
-    ];
-
-    $mensagens = [
-        'cpfCnpjNF.required' => 'Informe o CPF ou CNPJ.',
-        'nomeClienteNF.required' => 'Informe o nome ou razão social do cliente.',
-        'nomeClienteNF.min' => 'O nome do cliente precisa ter pelo menos 3 caracteres.',
-    ];
-
-    /*
-    |--------------------------------------------------------------------------
-    | Se for CNPJ, será NF-e.
-    | Então exige os dados completos do destinatário.
-    |--------------------------------------------------------------------------
-    */
-    if ($isCnpj) {
-        $regras = array_merge($regras, [
-            'telefoneNF' => 'required|string|min:10',
-            'enderecoNF' => 'required|string|min:2',
-            'numeroNF' => 'required|string|min:1',
-            'bairroNF' => 'required|string|min:2',
-            'cidadeNF' => 'required|string|min:2',
-            'ufNF' => 'required|string|size:2',
-            'cepNF' => 'required|string|min:8',
-        ]);
-
-        $mensagens = array_merge($mensagens, [
-            'telefoneNF.required' => 'Informe o telefone do destinatário.',
-            'enderecoNF.required' => 'Informe o endereço do destinatário.',
-            'numeroNF.required' => 'Informe o número do endereço.',
-            'bairroNF.required' => 'Informe o bairro.',
-            'cidadeNF.required' => 'Informe o município.',
-            'ufNF.required' => 'Informe a UF.',
-            'ufNF.size' => 'A UF deve ter 2 letras. Exemplo: PR.',
-            'cepNF.required' => 'Informe o CEP.',
-        ]);
-    }
-
-    $this->validate($regras, $mensagens);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validações extras para evitar erro na Focus NFe
-    |--------------------------------------------------------------------------
-    */
-    if ($isCnpj) {
-        $telefone = preg_replace('/[^0-9]/', '', $this->telefoneNF ?? '');
-        $cep = preg_replace('/[^0-9]/', '', $this->cepNF ?? '');
-
-        if (strlen($telefone) < 10) {
-            $this->addError('telefoneNF', 'Informe um telefone válido com DDD.');
             return;
         }
 
-        if (strlen($cep) !== 8) {
-            $this->addError('cepNF', 'Informe um CEP válido com 8 dígitos.');
+        $tipoDocumento = $isCnpj ? 'CNPJ' : 'CPF';
+
+        $regras = [
+            'cpfCnpjNF' => 'required|string|min:11|max:18',
+            'nomeClienteNF' => 'required|string|min:3',
+        ];
+
+        $mensagens = [
+            'cpfCnpjNF.required' => 'Informe o CPF ou CNPJ.',
+            'nomeClienteNF.required' => 'Informe o nome ou razão social do cliente.',
+            'nomeClienteNF.min' => 'O nome do cliente precisa ter pelo menos 3 caracteres.',
+        ];
+
+        /*
+        |--------------------------------------------------------------------------
+        | Se for CNPJ, será NF-e.
+        | Então exige os dados completos do destinatário.
+        |--------------------------------------------------------------------------
+        */
+        if ($isCnpj) {
+            $regras = array_merge($regras, [
+                'telefoneNF' => 'required|string|min:10',
+                'enderecoNF' => 'required|string|min:2',
+                'numeroNF' => 'required|string|min:1',
+                'bairroNF' => 'required|string|min:2',
+                'cidadeNF' => 'required|string|min:2',
+                'ufNF' => 'required|string|size:2',
+                'cepNF' => 'required|string|min:8',
+            ]);
+
+            $mensagens = array_merge($mensagens, [
+                'telefoneNF.required' => 'Informe o telefone do destinatário.',
+                'enderecoNF.required' => 'Informe o endereço do destinatário.',
+                'numeroNF.required' => 'Informe o número do endereço.',
+                'bairroNF.required' => 'Informe o bairro.',
+                'cidadeNF.required' => 'Informe o município.',
+                'ufNF.required' => 'Informe a UF.',
+                'ufNF.size' => 'A UF deve ter 2 letras. Exemplo: PR.',
+                'cepNF.required' => 'Informe o CEP.',
+            ]);
+        }
+
+        $this->validate($regras, $mensagens);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validações extras para evitar erro na Focus NFe
+        |--------------------------------------------------------------------------
+        */
+        if ($isCnpj) {
+            $telefone = preg_replace('/[^0-9]/', '', $this->telefoneNF ?? '');
+            $cep = preg_replace('/[^0-9]/', '', $this->cepNF ?? '');
+
+            if (strlen($telefone) < 10) {
+                $this->addError('telefoneNF', 'Informe um telefone válido com DDD.');
+
+                return;
+            }
+
+            if (strlen($cep) !== 8) {
+                $this->addError('cepNF', 'Informe um CEP válido com 8 dígitos.');
+
+                return;
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Monta os dados do cliente
+        |--------------------------------------------------------------------------
+        */
+        $dadosCliente = [
+            'nome' => $this->nomeClienteNF,
+            'tipo_documento' => $tipoDocumento,
+            'ativo' => true,
+        ];
+
+        if ($isCnpj) {
+            $dadosCliente = array_merge($dadosCliente, [
+                'inscricao_estadual' => $this->inscricaoEstadualNF ?: null,
+                'telefone' => preg_replace('/[^0-9]/', '', $this->telefoneNF ?? ''),
+                'endereco' => $this->enderecoNF,
+                'numero' => $this->numeroNF,
+                'bairro' => $this->bairroNF,
+                'cidade' => $this->cidadeNF,
+                'uf' => strtoupper($this->ufNF),
+                'cep' => preg_replace('/[^0-9]/', '', $this->cepNF ?? ''),
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Cria ou atualiza cliente
+        |--------------------------------------------------------------------------
+        */
+        $cliente = Cliente::updateOrCreate(
+            [
+                'cpf_cnpj' => $cpfCnpj,
+            ],
+            $dadosCliente
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Associa cliente ao pedido
+        |--------------------------------------------------------------------------
+        */
+        $pedido = Pedido::find($this->pedidoTempId);
+
+        if (! $pedido) {
+            $this->toastError('Pedido não encontrado para emissão da nota.');
+
             return;
         }
-    }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Monta os dados do cliente
-    |--------------------------------------------------------------------------
-    */
-    $dadosCliente = [
-        'nome' => $this->nomeClienteNF,
-        'tipo_documento' => $tipoDocumento,
-        'ativo' => true,
-    ];
+        $pedido->cliente_id = $cliente->id;
+        $pedido->save();
 
-    if ($isCnpj) {
-        $dadosCliente = array_merge($dadosCliente, [
-            'inscricao_estadual' => $this->inscricaoEstadualNF ?: null,
-            'telefone' => preg_replace('/[^0-9]/', '', $this->telefoneNF ?? ''),
-            'endereco' => $this->enderecoNF,
-            'numero' => $this->numeroNF,
-            'bairro' => $this->bairroNF,
-            'cidade' => $this->cidadeNF,
-            'uf' => strtoupper($this->ufNF),
-            'cep' => preg_replace('/[^0-9]/', '', $this->cepNF ?? ''),
+        /*
+        |--------------------------------------------------------------------------
+        | Dispara job de emissão com CPF ou CNPJ
+        |--------------------------------------------------------------------------
+        */
+        EmitirNotaFiscal::dispatch($pedido->id, tenant()->id, $tipoDocumento);
+
+        $this->mostrarModalNF = false;
+        $this->pedidoTempId = null;
+
+        $this->reset([
+            'cpfCnpjNF',
+            'nomeClienteNF',
+            'inscricaoEstadualNF',
+            'telefoneNF',
+            'enderecoNF',
+            'numeroNF',
+            'bairroNF',
+            'cidadeNF',
+            'ufNF',
+            'cepNF',
         ]);
+
+        $tipoNota = $isCnpj ? 'NF-e' : 'NFC-e';
+
+        $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado! {$tipoNota} solicitada.");
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cria ou atualiza cliente
-    |--------------------------------------------------------------------------
-    */
-    $cliente = Cliente::updateOrCreate(
-        [
-            'cpf_cnpj' => $cpfCnpj,
-        ],
-        $dadosCliente
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Associa cliente ao pedido
-    |--------------------------------------------------------------------------
-    */
-    $pedido = Pedido::find($this->pedidoTempId);
-
-    if (!$pedido) {
-        $this->toastError('Pedido não encontrado para emissão da nota.');
-        return;
-    }
-
-    $pedido->cliente_id = $cliente->id;
-    $pedido->save();
-
-    /*
-    |--------------------------------------------------------------------------
-    | Dispara job de emissão com CPF ou CNPJ
-    |--------------------------------------------------------------------------
-    */
-    EmitirNotaFiscal::dispatch($pedido->id, tenant()->id, $tipoDocumento);
-
-    $this->mostrarModalNF = false;
-    $this->pedidoTempId = null;
-
-    $this->reset([
-        'cpfCnpjNF',
-        'nomeClienteNF',
-        'inscricaoEstadualNF',
-        'telefoneNF',
-        'enderecoNF',
-        'numeroNF',
-        'bairroNF',
-        'cidadeNF',
-        'ufNF',
-        'cepNF',
-    ]);
-
-    $tipoNota = $isCnpj ? 'NF-e' : 'NFC-e';
-
-    $this->toastSuccess("Pedido #{$pedido->numero_pedido} finalizado! {$tipoNota} solicitada.");
-}
 
     /**
      * Finaliza venda sem nota fiscal
@@ -1019,7 +1117,7 @@ class Index extends Component
         $this->mostrarModalNF = false;
         $this->pedidoTempId = null;
         $this->reset(['cpfCnpjNF', 'nomeClienteNF']);
-        $this->toastSuccess("Pedido finalizado sem nota fiscal!");
+        $this->toastSuccess('Pedido finalizado sem nota fiscal!');
     }
 
     // ==========================================
@@ -1041,6 +1139,7 @@ class Index extends Component
             $this->pagamentos = [];
             $this->salvarCarrinho();
             $this->recalcularPendente();
+
             return;
         }
 
@@ -1057,12 +1156,12 @@ class Index extends Component
                 $chave = (string) $item->produto_id;
 
                 $this->carrinho[$chave] = [
-                    'id'              => $item->produto_id,
-                    'nome'            => $item->produto_nome,
-                    'preco'           => (float) $item->preco_unitario,
-                    'preco_formatado' => 'R$ ' . number_format($item->preco_unitario, 2, ',', '.'),
-                    'quantidade'      => (float) $item->quantidade,
-                    'subtotal'        => (float) $item->subtotal,
+                    'id' => $item->produto_id,
+                    'nome' => $item->produto_nome,
+                    'preco' => (float) $item->preco_unitario,
+                    'preco_formatado' => 'R$ '.number_format($item->preco_unitario, 2, ',', '.'),
+                    'quantidade' => (float) $item->quantidade,
+                    'subtotal' => (float) $item->subtotal,
                 ];
             }
 
@@ -1083,12 +1182,14 @@ class Index extends Component
 
     /**
      * Salva a comanda atual
-     * @param bool $limparAposalvar Se deve limpar o carrinho após salvar
+     *
+     * @param  bool  $limparAposalvar  Se deve limpar o carrinho após salvar
      */
     public function salvarComanda(bool $limparAposalvar = true): void
     {
         if (empty($this->carrinho)) {
             $this->toastWarning('Carrinho vazio! Adicione itens para salvar a mesa.');
+
             return;
         }
 
@@ -1101,12 +1202,12 @@ class Index extends Component
         } else {
             $comanda = Comanda::buscarMesa($this->mesa);
 
-            if (!$comanda) {
+            if (! $comanda) {
                 $comanda = Comanda::create([
-                    'caixa_id'   => $caixa?->id,
-                    'mesa'       => $this->mesa,
-                    'status'     => 'aberta',
-                    'total'      => $total,
+                    'caixa_id' => $caixa?->id,
+                    'mesa' => $this->mesa,
+                    'status' => 'aberta',
+                    'total' => $total,
                     'total_pago' => 0,
                 ]);
             } else {
@@ -1119,12 +1220,12 @@ class Index extends Component
         // Salva itens da comanda
         foreach ($this->carrinho as $item) {
             ComandaItem::create([
-                'comanda_id'     => $comanda->id,
-                'produto_id'     => $item['id'],
-                'produto_nome'   => $item['nome'],
-                'quantidade'     => $item['quantidade'],
+                'comanda_id' => $comanda->id,
+                'produto_id' => $item['id'],
+                'produto_nome' => $item['nome'],
+                'quantidade' => $item['quantidade'],
                 'preco_unitario' => $item['preco'],
-                'subtotal'       => $item['subtotal'],
+                'subtotal' => $item['subtotal'],
             ]);
         }
 
@@ -1133,7 +1234,18 @@ class Index extends Component
         if ($limparAposalvar) {
             $mesaSalva = $comanda->mesa;
 
-            $this->limparCarrinho();
+            $this->limparCarrinho(false);
+            $this->invalidarTotaisCarrinho();
+            $this->valorPendente = 0;
+            $this->valorPagamento = 0;
+
+            $this->dispatch('pdv-atualizar-valor-pagamento', [
+                'valor' => 0,
+                'valor_formatado' => '0,00',
+            ]);
+
+            $this->dispatch('pdv-resetar-quantidade');
+            $this->focarCampoCodigo();
             $this->mesa = '';
             $this->modoComanda = false;
             $this->comandaId = null;
@@ -1151,14 +1263,15 @@ class Index extends Component
      */
     public function pagarParcialComanda(): void
     {
-        if (!$this->comandaId) {
+        if (! $this->comandaId) {
             $this->salvarComanda(false);
         }
 
         $comanda = Comanda::find($this->comandaId);
 
-        if (!$comanda) {
+        if (! $comanda) {
             $this->toastError('Comanda não encontrada.');
+
             return;
         }
 
@@ -1166,6 +1279,7 @@ class Index extends Component
 
         if ($valorInformado <= 0) {
             $this->toastWarning('Informe um valor para pagamento.');
+
             return;
         }
 
@@ -1181,14 +1295,15 @@ class Index extends Component
 
         if ($valorEfetivo <= 0) {
             $this->toastWarning('Valor inválido!');
+
             return;
         }
 
         // Registra pagamento
         ComandaPagamento::create([
             'comanda_id' => $comanda->id,
-            'forma'      => $this->formaPagamento,
-            'valor'      => $valorEfetivo,
+            'forma' => $this->formaPagamento,
+            'valor' => $valorEfetivo,
         ]);
 
         $comanda->increment('total_pago', $valorEfetivo);
@@ -1196,16 +1311,17 @@ class Index extends Component
 
         if ($comanda->total_restante <= 0) {
             $this->fecharComanda($comanda);
+
             return;
         }
 
         $this->valorPendente = (float) $comanda->total_restante;
         $this->valorPagamento = (float) $comanda->total_restante;
 
-        $mensagem = "Pagamento lançado! Restante: R$ " . number_format($comanda->total_restante, 2, ',', '.');
+        $mensagem = 'Pagamento lançado! Restante: R$ '.number_format($comanda->total_restante, 2, ',', '.');
 
         if ($troco > 0) {
-            $mensagem .= " | Troco: R$ " . number_format($troco, 2, ',', '.');
+            $mensagem .= ' | Troco: R$ '.number_format($troco, 2, ',', '.');
         }
 
         $this->toastSuccess($mensagem);
@@ -1213,7 +1329,8 @@ class Index extends Component
 
     /**
      * Fecha uma comanda e gera o pedido final
-     * @param Comanda $comanda Comanda a ser fechada
+     *
+     * @param  Comanda  $comanda  Comanda a ser fechada
      */
     private function fecharComanda(Comanda $comanda): void
     {
@@ -1221,47 +1338,47 @@ class Index extends Component
 
         try {
             $comanda->update([
-                'status'     => 'fechada',
+                'status' => 'fechada',
                 'fechada_em' => now(),
             ]);
 
             $caixa = Caixa::caixaAberto();
 
             if ($caixa) {
-                $pagamentos = $comanda->pagamentos->map(fn($p) => [
+                $pagamentos = $comanda->pagamentos->map(fn ($p) => [
                     'forma' => $p->forma,
                     'valor' => (float) $p->valor,
                     'troco' => 0,
                 ])->toArray();
 
                 $pedido = Pedido::create([
-                    'caixa_id'      => $caixa->id,
+                    'caixa_id' => $caixa->id,
                     'numero_pedido' => Pedido::gerarNumero(),
-                    'tipo'          => 'mesa',
-                    'mesa'          => $comanda->mesa,
-                    'subtotal'      => $comanda->total,
-                    'taxa_entrega'  => 0,
-                    'desconto'      => 0,
-                    'total'         => $comanda->total,
-                    'status'        => 'entregue',
-                    'pagamentos'    => $pagamentos,
-                    'atendente_id'  => $this->tenantUserId ?? 1,
+                    'tipo' => 'mesa',
+                    'mesa' => $comanda->mesa,
+                    'subtotal' => $comanda->total,
+                    'taxa_entrega' => 0,
+                    'desconto' => 0,
+                    'total' => $comanda->total,
+                    'status' => 'entregue',
+                    'pagamentos' => $pagamentos,
+                    'atendente_id' => $this->tenantUserId ?? 1,
                 ]);
 
                 foreach ($comanda->itens as $item) {
                     PedidoItem::create([
-                        'pedido_id'      => $pedido->id,
-                        'produto_id'     => $item->produto_id,
-                        'produto_nome'   => $item->produto_nome,
-                        'quantidade'     => $item->quantidade,
+                        'pedido_id' => $pedido->id,
+                        'produto_id' => $item->produto_id,
+                        'produto_nome' => $item->produto_nome,
+                        'quantidade' => $item->quantidade,
                         'preco_unitario' => $item->preco_unitario,
-                        'subtotal'       => $item->subtotal,
+                        'subtotal' => $item->subtotal,
                     ]);
                 }
 
                 $totais = $comanda->pagamentos
                     ->groupBy('forma')
-                    ->map(fn($grupo) => $grupo->sum('valor'));
+                    ->map(fn ($grupo) => $grupo->sum('valor'));
 
                 $caixa->increment('total_vendas', (float) $comanda->total);
                 $caixa->increment('quantidade_vendas');
@@ -1276,7 +1393,7 @@ class Index extends Component
             $mesaFechada = $comanda->mesa;
 
             $this->mostrarPagamento = false;
-            $this->limparCarrinho();
+            $this->limparCarrinho(false);
             $this->mesa = '';
             $this->comanda = '';
             $this->comandaId = null;
@@ -1286,7 +1403,7 @@ class Index extends Component
             $this->toastSuccess("Mesa {$mesaFechada} fechada com sucesso!");
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->toastError('Erro ao fechar comanda: ' . $e->getMessage());
+            $this->toastError('Erro ao fechar comanda: '.$e->getMessage());
         }
     }
 
@@ -1296,7 +1413,8 @@ class Index extends Component
 
     /**
      * Renderiza a view do PDV
-     * @return \Illuminate\View\View
+     *
+     * @return View
      */
     public function render()
     {
@@ -1309,10 +1427,10 @@ class Index extends Component
         // Busca produtos ativos com filtros
         $produtos = Produto::query()
             ->where('ativo', true)
-            ->when($this->categoriaSelecionada, fn($q) => $q->where('categoria_id', $this->categoriaSelecionada))
-            ->when($this->busca, fn($q) => $q->where(function ($q2) {
-                $q2->where('nome', 'like', '%' . $this->busca . '%')
-                    ->orWhere('codigo', 'like', '%' . $this->busca . '%');
+            ->when($this->categoriaSelecionada, fn ($q) => $q->where('categoria_id', $this->categoriaSelecionada))
+            ->when($this->busca, fn ($q) => $q->where(function ($q2) {
+                $q2->where('nome', 'like', '%'.$this->busca.'%')
+                    ->orWhere('codigo', 'like', '%'.$this->busca.'%');
             }))
             ->orderBy('nome')
             ->get();

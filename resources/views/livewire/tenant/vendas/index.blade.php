@@ -358,11 +358,36 @@
                                 <div class="text-xs text-ink-400">{{ $pedido->created_at->format('H:i') }}</div>
                              </td>
                             <td class="px-4 py-3 text-ink-600 dark:text-ink-300">
-                                <div class="capitalize">{{ $pedido->tipo }}</div>
-                                <div class="text-xs text-ink-400">
-                                    {{ $pedido->mesa ? 'Mesa ' . $pedido->mesa : 'Sem mesa' }}
+                                @php
+                                    $tipoPedidoLabel = match($pedido->tipo) {
+                                        'entrega' => 'Entrega',
+                                        'balcao' => 'Vem buscar',
+                                        'mesa' => 'Consumo local',
+                                        default => ucfirst($pedido->tipo),
+                                    };
+
+                                    $tipoPedidoClasse = match($pedido->tipo) {
+                                        'entrega' => 'bg-blue-100 text-blue-700',
+                                        'balcao' => 'bg-purple-100 text-purple-700',
+                                        'mesa' => 'bg-green-100 text-green-700',
+                                        default => 'bg-gray-100 text-gray-700',
+                                    };
+                                @endphp
+
+                                <span class="inline-flex px-2 py-1 rounded text-xs font-bold {{ $tipoPedidoClasse }}">
+                                    {{ $tipoPedidoLabel }}
+                                </span>
+
+                                <div class="text-xs text-ink-400 mt-1">
+                                    @if($pedido->tipo === 'mesa')
+                                        {{ $pedido->mesa ? 'Mesa ' . $pedido->mesa : 'Consumo local' }}
+                                    @elseif($pedido->tipo === 'entrega')
+                                        {{ $pedido->bairro ? $pedido->bairro : 'Entrega' }}
+                                    @else
+                                        Retirada no balcão
+                                    @endif
                                 </div>
-                             </td>
+                            </td>
                             <td class="px-4 py-3 text-ink-600 dark:text-ink-300">
                                 {{ $pedido->cliente->nome ?? 'Consumidor' }}
                              </td>

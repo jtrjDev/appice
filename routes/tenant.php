@@ -30,6 +30,8 @@ use App\Livewire\Tenant\Caixa\Historico as CaixaHistorico;
 use App\Livewire\Tenant\Caixa\Relatorio as CaixaRelatorio;
 use Illuminate\Support\Facades\DB;
 
+use App\Livewire\Tenant\AtendimentoRapido\Index as AtendimentoRapidoIndex;
+
 Route::middleware(['web', 'auth:web', 'tenant.auth'])
     ->prefix('app')
     ->name('tenant.')
@@ -61,6 +63,9 @@ Route::get('/notas/{nota}/consultar', [NotaFiscalController::class, 'consultar']
 Route::get('/notas/{nota}/xml', [NotaFiscalController::class, 'downloadXml'])->name('notas.download-xml');
 Route::get('/notas/{nota}/pdf', [NotaFiscalController::class, 'downloadPdf'])->name('notas.download-pdf');
 Route::get('/notas/{nota}', NotasShow::class)->name('notas.show');
+
+Route::get('/atendimento-rapido', AtendimentoRapidoIndex::class)
+    ->name('tenant.atendimento-rapido');
 
 
 //Rotas Usuarios

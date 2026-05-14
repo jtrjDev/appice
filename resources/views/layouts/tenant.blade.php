@@ -7,14 +7,21 @@
     <title>@yield('title', tenant()->name) · {{ config('app.name') }}</title>
 
     <script>
-        (function() {
-            const saved = localStorage.getItem('theme');
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (saved === 'dark' || (!saved && systemDark)) {
-                document.documentElement.classList.add('dark');
-            }
-        })();
-    </script>
+    (function () {
+        const savedTheme = localStorage.getItem('theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        const shouldUseDark = savedTheme
+            ? savedTheme === 'dark'
+            : systemDark;
+
+        if (shouldUseDark) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    })();
+</script>
 
     @php
         $manifestPath = public_path('build/manifest.json');
@@ -275,10 +282,50 @@
     @livewireScripts
 
     <script>
-        document.addEventListener('livewire:navigated', () => {
-            // Espaço para reinit de plugins, máscaras, etc.
-        });
-    </script>
+    window.themeManager = {
+        getTheme() {
+            return localStorage.getItem('theme');
+        },
+
+        isDark() {
+            return document.documentElement.classList.contains('dark');
+        },
+
+        apply(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            }
+        },
+
+        toggle() {
+            const nextTheme = this.isDark() ? 'light' : 'dark';
+            this.apply(nextTheme);
+        },
+
+        restore() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            const theme = savedTheme
+                ? savedTheme
+                : (systemDark ? 'dark' : 'light');
+
+            this.apply(theme);
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        window.themeManager.restore();
+    });
+
+    document.addEventListener('livewire:navigated', () => {
+        window.themeManager.restore();
+    });
+</script>
 
     @stack('scripts')
    {{-- Toast Notifications --}}

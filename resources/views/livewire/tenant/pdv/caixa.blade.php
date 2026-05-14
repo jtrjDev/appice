@@ -225,11 +225,17 @@
                                     {{ $pedido->itens->pluck('produto_nome')->join(', ') }}
                                 </td>
                                 <td class="px-4 py-3">
-                                   @foreach($pedido->pagamentos as $pag)
+                                   @forelse(($pedido->pagamentos ?? []) as $pag)
                                         <span class="inline-block px-2 py-0.5 rounded text-xs bg-ink-100 dark:bg-ink-700 text-ink-600 dark:text-ink-300 capitalize mr-1 mb-1">
-                                            {{ str_replace('_', ' ', $pag['forma']) }} — R$ {{ number_format($pag['valor'], 2, ',', '.') }}
+                                            {{ str_replace('_', ' ', $pag['forma'] ?? 'não informado') }}
+                                            —
+                                            R$ {{ number_format($pag['valor'] ?? 0, 2, ',', '.') }}
                                         </span>
-                                    @endforeach
+                                    @empty
+                                        <span class="text-xs text-ink-400 italic">
+                                            Sem pagamento registrado
+                                        </span>
+                                    @endforelse
                                 </td>
                                 <td class="px-4 py-3 text-right font-semibold text-ink-900 dark:text-ink-50">
                                     R$ {{ number_format($pedido->total, 2, ',', '.') }}
